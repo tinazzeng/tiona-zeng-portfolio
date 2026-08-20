@@ -1,43 +1,288 @@
-const defaults={studioName:"Moss Studio",accent:"#ff674d",about:"I’m a student artist making pictures, poems, and playful things for the internet. I’m interested in soft colors, hard feelings, and the little worlds we carry around with us.",email:"hello@example.com",links:{linkedin:"",rednote:"",instagram:"",resume:""},projects:[
-{id:"paper-sun",title:"Paper Sun",year:"2026",category:"fine-art",medium:"Color theory / collage",description:"A small study in warmth, memory, and the color orange.",credits:"Art direction & collage — Moss Studio",notes:"I started with old catalog pages and let the orange find its own shape. The work became a tiny sun you could keep in your pocket.",image:"",color:"#ff674d"},
-{id:"after-rain",title:"After Rain",year:"2025",category:"fine-art",medium:"35mm photography",description:"A photo diary from a week when every surface was reflecting something back.",credits:"Photography — Moss Studio",notes:"Shot on a borrowed camera while walking home from class.",image:"",color:"#b8d4ff"},
-{id:"body-language",title:"Body Language",year:"2025",category:"writing",medium:"Poem",description:"A poem about the strange ways a body tries to say hello.",credits:"Words — Moss Studio",notes:"Originally written in the margins of a sketchbook.",image:"",color:"#e8c1ff"},
-{id:"night-shift",title:"Night Shift",year:"2024",category:"projects",medium:"Campaign design",description:"A visual identity for a late-night neighborhood radio show.",credits:"Design, type & social — Moss Studio",notes:"The identity uses a loose, loud system that changes with each broadcast.",image:"",color:"#c6ff47"},
-{id:"soft-launch",title:"Soft Launch",year:"2024",category:"projects",medium:"Digital experience",description:"A joyful toolkit and launch world for a new skincare brand.",credits:"Design intern — Moss Studio",notes:"The small details were the point: tiny messages, animated stickers, and room for play.",image:"",color:"#f9df91"}]};
-let data=JSON.parse(localStorage.getItem("moss-archive")||"null")||structuredClone(defaults),editingId=null;if(data.accent==="#ff674d")data.accent="#f2d591";if(data.studioName==="Moss Studio")data.studioName="Tiona Zeng";if(!data.annotations)data.annotations=["student artist | I’m currently studying, experimenting, and building an archive as I go.","soft colors | I keep returning to colors that feel like a memory.","little worlds | A collection of tiny details, feelings, and references that shape each project."];if(!data.links)data.links={linkedin:"",rednote:"",instagram:"",resume:""};
-const app=document.querySelector("#app"),modal=document.querySelector("#editor-modal"),isAdmin=location.pathname.replace(/\/+$/,"").endsWith("/admin");
-const cursor=document.querySelector(".cursor-orb");if(modal)modal.addEventListener("close",()=>document.body.appendChild(cursor));
-const esc=s=>String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
-const label=c=>({"fine-art":"Fine art",writing:"Writing",projects:"Design"})[c];
-const fallbackReading=[{title:"In the Woods",author:"Tana French",url:"https://www.goodreads.com/book/show/2459785.In_the_Woods"},{title:"Abundance",author:"Ezra Klein",url:"https://www.goodreads.com/book/show/176444106-abundance"}];
-const externalUrl=value=>{let url=String(value||"").trim();return url&&!/^https?:\/\//i.test(url)?"https://"+url.replace(/^\/+/,""):url};
-const socialIcons={linkedin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>',rednote:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',instagram:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><path d="M17.5 6.5h.01"/></svg>',resume:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8M8 9h2"/></svg>'};
-function annotatedAbout(){let copy=esc(data.about);(data.annotations||[]).forEach((item,index)=>{let parts=item.split("|"),phrase=parts.shift().trim(),note=parts.join("|").trim();if(phrase&&note)copy=copy.replace(esc(phrase),'<button class="annotation" type="button"><span>'+esc(phrase)+'</span><sup>'+String(index+1)+'</sup><span class="annotation-note">'+esc(note)+'</span></button>')});return copy}
-function save(){localStorage.setItem("moss-archive",JSON.stringify(data));applyTheme()}
-function applyTheme(){document.documentElement.style.setProperty("--accent",data.accent);document.title=data.studioName+" — Portfolio";let wordmark=document.querySelector(".wordmark");if(wordmark)wordmark.innerHTML=esc(data.studioName).replace(" ","<br />")+"<span>✦</span>"}
-function icons(){lucide.createIcons()}
-function card(p){let bg=p.image?'background-image:url("'+esc(p.image)+'")':"--card-color:"+p.color;return '<a class="work-card" href="#'+p.category+"/"+p.id+'" style="'+(!p.image?"background:"+p.color:"")+'"><div class="card-image" style="'+bg+'"></div><div class="card-meta"><span>'+label(p.category)+'</span><span>'+esc(p.year)+'</span></div><h3 class="card-title">'+esc(p.title)+'</h3></a>'}
-function home(){let art=data.projects.filter(p=>p.category==="fine-art").slice(0,3),writing=data.projects.filter(p=>p.category==="writing").slice(0,3);return '<section class="hero"><div><h1>ART IN<br />ALL ITS<br /><em>FORMS.</em></h1><p class="intro">An ever-growing archive of pictures, poems, ideas, and projects made with heart.</p></div><div class="hero-art"><div class="sun"></div><div class="arch"></div><div class="star">✦</div></div><div class="hero-bottom"><span>SCROLL TO EXPLORE</span><span>STUDENT ARTIST / HUMAN BEING <i data-lucide="arrow-down"></i></span></div></section><div class="marquee"><div class="marquee-track">thanks for stopping by ✶ &nbsp; thanks for stopping by ✶ &nbsp; thanks for stopping by ✶ &nbsp; thanks for stopping by ✶ &nbsp;</div></div><section class="home-sections"><div class="section-heading"><div><p>01 / A LITTLE LOOK</p><h2>Fine art</h2></div><a class="text-link" href="#fine-art">SEE ALL WORK →</a></div><div class="feature-grid">'+art.map(card).join("")+'</div></section><section class="home-sections"><div class="section-heading"><div><p>02 / WORDS I KEEP</p><h2>Writing</h2></div><a class="text-link" href="#writing">READ MORE →</a></div>'+writing.map(p=>'<a class="writing-row" href="#writing/'+p.id+'"><span class="type">'+esc(p.medium||"Writing")+'</span><h3>'+esc(p.title)+'</h3><i data-lucide="arrow-up-right"></i></a>').join("")+'</section><section class="about"><h2>Hi, I’m<br /><em>still becoming.</em></h2><div class="about-copy"><p>'+esc(data.about)+'</p></div></section>'}
-function listing(cat){let title={"fine-art":"Fine<br />art",writing:"Creative<br />writing",projects:"Design<br />work"}[cat],copy={"fine-art":"A home for my experiments and artworks. I particularly love to play with color theory, and I like to incorporate written elements.",writing:"Words will always be my first love, my favorite medium. I prefer English; incorporate Mandarin Chinese; and occasionally explore Japanese.",projects:"Selected design work that I produced for “clients” such companies, clubs, and other such organizations."}[cat],items=data.projects.filter(p=>p.category===cat);return '<section class="page"><div class="page-head"><h1>'+title+'</h1><p>'+copy+'</p></div><div class="project-grid">'+(items.length?items.map(card).join(""):'<p class="empty">This shelf is waiting for something wonderful.</p>')+'</div></section>'}
-function detail(cat,id){let p=data.projects.find(x=>x.id===id);if(!p)return listing(cat);let bg=p.image?'background-image:url("'+esc(p.image)+'")':"background:"+p.color;return '<article class="detail"><a class="back" href="#'+cat+'"><i data-lucide="arrow-left"></i> BACK TO '+label(cat).toUpperCase()+'</a><div class="detail-head"><h1>'+esc(p.title)+'</h1><div class="detail-meta"><span>'+esc(p.year)+'</span><span>'+esc(p.medium||"Mixed media")+'</span></div></div><div class="detail-image" style="'+bg+'"></div><div class="detail-copy"><p>'+esc(p.description||"A work in progress.")+'</p><div><h3>Credits</h3><p>'+esc(p.credits||"—")+'</p><h3>Process notes</h3><p>'+esc(p.notes||"Notes coming soon.")+'</p>'+(p.link?'<a href="'+esc(p.link)+'" target="_blank" rel="noreferrer">VISIT EXTERNAL LINK ↗</a>':"")+'</div></div></article>'}
-function renderGallery(){let part=location.hash.slice(1).split("/");if(!part[1])return;let p=data.projects.find(x=>x.id===part[1]),items=(p&&p.gallery||p&&p.images||[]).map(item=>typeof item==="string"?{src:item,caption:""}:item).filter((item,index)=>item.src!==p.image||index>0);if(!items.length)return;let gallery=document.createElement("section");gallery.className="detail-gallery";gallery.innerHTML=items.map(item=>'<figure><img src="'+esc(item.src)+'" alt="Additional image from '+esc(p.title)+'" loading="lazy" />'+(item.caption?'<figcaption>'+esc(item.caption)+'</figcaption>':"")+'</figure>').join("");app.querySelector(".detail-image").after(gallery)}
-function renderMarquee(){let track=app.querySelector(".marquee-track"),phrase='<span class="marquee-phrase">thanks for stopping by</span><span class="marquee-separator">✶</span>',group=phrase+phrase+phrase+phrase;if(track)track.innerHTML='<span class="marquee-group">'+group+'</span><span class="marquee-group" aria-hidden="true">'+group+'</span>'}
-function renderHeroCopy(){let heading=app.querySelector(".hero h1"),intro=app.querySelector(".hero .intro"),scroll=app.querySelector(".hero-bottom span:first-child"),label=app.querySelector(".hero-bottom span:last-child");if(heading)heading.innerHTML="<em>welcome.</em>";if(intro)intro.textContent="Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)";if(scroll)scroll.textContent="scroll to explore my mind";if(label)label.innerHTML='student / artist / writer / designer <i data-lucide="arrow-down"></i>'}
-function renderHeroGraphic(){let art=app.querySelector(".hero-art");if(art)art.innerHTML='<img src="assets/graphics/portfolio-graphic.svg" alt="" />'}
-function renderDesignPreview(){let work=data.projects.filter(p=>p.category==="projects").slice(0,3);if(!work.length)return;let section=document.createElement("section");section.className="home-sections design-preview";section.innerHTML='<div class="section-heading"><div><p>03 / projects with clients</p><h2>Design</h2></div><a class="text-link" href="#projects">See design work →</a></div><div class="feature-grid">'+work.map(card).join("")+'</div>';app.querySelector(".about").before(section)}
-function linkHomepageHeadings(){let links=["#fine-art","#writing","#projects"];app.querySelectorAll(".home-sections .section-heading h2").forEach((heading,index)=>{let text=heading.textContent;heading.innerHTML='<a href="'+links[index]+'">'+esc(text)+'</a>'})}
-function renderHomeSectionCopy(){let labels=["01 / pieces that challenge me in every way","02 / shower & regular thoughts alike","03 / projects with clients"];app.querySelectorAll(".home-sections .section-heading p").forEach((label,index)=>label.textContent=labels[index])}
-function renderAnnotations(){let heading=app.querySelector(".about h2"),paragraph=app.querySelector(".about p");if(heading)heading.innerHTML="<em>nice to meet you, i’m tiona</em>";if(paragraph)paragraph.innerHTML=annotatedAbout()}
-function renderAboutLinks(){let copy=app.querySelector(".about-copy");if(!copy)return;let links=data.links||{},items=[['linkedin',links.linkedin],['rednote',links.rednote],['instagram',links.instagram],['resume',links.resume]].map(([name,url])=>[name,externalUrl(url)]).filter(([,url])=>url);if(!items.length)return;let section=document.createElement("nav");section.className="about-links";section.setAttribute("aria-label","Social links");section.innerHTML=items.map(([name,url])=>'<a href="'+esc(url)+'" target="_blank" rel="noreferrer" aria-label="'+esc(name)+'" title="'+esc(name)+'">'+socialIcons[name]+'<span class="visually-hidden">'+esc(name)+'</span></a>').join("");copy.append(section)}
-function renderReading(books){let about=app.querySelector(".about");if(!about)return;let existing=about.querySelector(".currently-reading");if(existing)existing.remove();let section=document.createElement("section");section.className="currently-reading";section.innerHTML='<p class="eyebrow">currently reading</p><ol>'+books.map(book=>'<li><a href="'+esc(book.url)+'" target="_blank" rel="noreferrer">'+esc(book.title)+'</a><span>by '+esc(book.author)+'</span></li>').join("")+'</ol><a class="reading-profile" href="https://www.goodreads.com/user/show/34056305-tz" target="_blank" rel="noreferrer">view my goodreads →</a>';about.append(section)}
-function loadReading(){renderReading(fallbackReading);fetch("data/current-reading.json",{cache:"no-store"}).then(response=>response.ok?response.json():Promise.reject()).then(payload=>{if(Array.isArray(payload.books)&&payload.books.length)renderReading(payload.books)}).catch(()=>{})}
-function render(){let part=location.hash.slice(1).split("/"),page=part[0]||"home";app.classList.remove("page-enter");void app.offsetWidth;app.innerHTML=part[1]?detail(page,part[1]):page==="home"?home():listing(page);renderGallery();if(page==="home"){renderHeroCopy();renderHeroGraphic();renderMarquee();renderDesignPreview();renderHomeSectionCopy();linkHomepageHeadings();renderAnnotations();renderAboutLinks();loadReading()}app.classList.add("page-enter");icons();scrollTo(0,0)}
-function renderList(){document.querySelector("#project-list").innerHTML=data.projects.map(p=>'<button class="project-item" data-edit="'+p.id+'"><b>'+esc(p.title)+'</b><span>'+esc(p.year)+'</span><span>'+label(p.category)+'</span><i data-lucide="pencil"></i></button>').join("");icons()}
-function openForm(id){editingId=id;let form=document.querySelector("#project-form"),p=data.projects.find(x=>x.id===id);form.classList.remove("hidden");form.reset();document.querySelector("#form-title").textContent=p?"Edit project":"New project";document.querySelector(".delete-project").style.visibility=p?"visible":"hidden";if(p){Object.keys(p).forEach(k=>{if(form.elements[k])form.elements[k].value=p[k]});form.elements.galleryCaptions.value=(p.gallery||[]).map(item=>item.caption||"").join("\n")}form.scrollIntoView({behavior:"smooth",block:"start"})}
-function editor(){if(!modal)return;modal.showModal();modal.appendChild(cursor);renderList();document.querySelector("#about-copy").value=data.about;document.querySelector("#about-annotations").value=(data.annotations||[]).join("\n");document.querySelector("#about-email").value=data.email;document.querySelector("#linkedin-url").value=data.links&&data.links.linkedin||"";document.querySelector("#rednote-url").value=data.links&&data.links.rednote||"";document.querySelector("#instagram-url").value=data.links&&data.links.instagram||"";document.querySelector("#resume-url").value=data.links&&data.links.resume||"";document.querySelector("#studio-name").value=data.studioName;document.querySelector("#accent-color").value=data.accent;document.querySelector("#font-name").textContent=data.fontName||"Sneaky Times selected — upload its file to embed it"}
-document.addEventListener("click",e=>{if(e.target.closest(".admin-trigger"))editor();if(e.target.closest(".close-editor")){if(isAdmin)location.href="../";else modal&&modal.close()}let tab=e.target.closest(".editor-tab");if(tab){document.querySelectorAll(".editor-tab,.tab-panel").forEach(x=>x.classList.remove("active"));tab.classList.add("active");document.querySelector("#"+tab.dataset.tab+"-tab").classList.add("active")}let edit=e.target.closest("[data-edit]");if(edit)openForm(edit.dataset.edit);if(e.target.closest(".add-project"))openForm();if(e.target.closest(".cancel-edit"))document.querySelector("#project-form").classList.add("hidden");if(e.target.closest(".delete-project")&&editingId){data.projects=data.projects.filter(x=>x.id!==editingId);save();renderList();document.querySelector("#project-form").classList.add("hidden");render()}if(e.target.closest(".save-about")){data.about=document.querySelector("#about-copy").value;data.annotations=document.querySelector("#about-annotations").value.split("\n").map(note=>note.trim()).filter(Boolean);data.email=document.querySelector("#about-email").value;data.links={linkedin:externalUrl(document.querySelector("#linkedin-url").value),rednote:externalUrl(document.querySelector("#rednote-url").value),instagram:externalUrl(document.querySelector("#instagram-url").value),resume:externalUrl(document.querySelector("#resume-url").value)};save();render()}if(e.target.closest(".export-data")){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:"application/json"}));a.download="moss-studio-archive.json";a.click();URL.revokeObjectURL(a.href)}if(e.target.closest(".reset-data")&&confirm("Reset all projects to the original demo content?")){data=structuredClone(defaults);save();editor();render()}});
-const readImage=file=>new Promise((resolve,reject)=>{let reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file)});
-document.addEventListener("click",e=>{let annotation=e.target.closest(".annotation");if(!annotation)return;document.querySelectorAll(".annotation.open").forEach(item=>{if(item!==annotation)item.classList.remove("open")});annotation.classList.toggle("open")});
-document.querySelector("#project-form")?.addEventListener("submit",async e=>{e.preventDefault();let p=Object.fromEntries(new FormData(e.target)),existing=data.projects.find(x=>x.id===p.id),files=[...e.target.elements.galleryFiles.files].slice(0,8),uploads=await Promise.all(files.map(readImage)),urls=(p.galleryUrls||"").split(/\n|,/).map(url=>url.trim()).filter(Boolean),previous=(existing&&existing.gallery||existing&&existing.images||[]).map(item=>typeof item==="string"?{src:item,caption:""}:item),captions=(p.galleryCaptions||"").split("\n");delete p.galleryFiles;delete p.galleryUrls;delete p.galleryCaptions;p.images=[...new Set([...previous.map(item=>item.src),...urls,...uploads])].slice(0,8);p.gallery=p.images.map((src,index)=>({src,caption:captions[index]||((previous.find(item=>item.src===src)||{}).caption||"")}));p.id=p.id||p.title.toLowerCase().replace(/[^a-z0-9]+/g,"-")+"-"+Date.now().toString().slice(-4);p.image=p.image||p.images[0]||(existing&&existing.image)||"";p.color=(existing||{}).color||["#ff674d","#b8d4ff","#c6ff47","#e8c1ff"][data.projects.length%4];let i=data.projects.findIndex(x=>x.id===p.id);i>-1?data.projects[i]=p:data.projects.unshift(p);save();renderList();e.target.classList.add("hidden");render()});
-document.querySelector("#studio-name")?.addEventListener("input",e=>{data.studioName=e.target.value||"Moss Studio";save()});document.querySelector("#accent-color")?.addEventListener("input",e=>{data.accent=e.target.value;save();render()});document.querySelector("#font-upload")?.addEventListener("change",e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{data.font=r.result;data.fontName=f.name;let s=document.querySelector("#custom-font")||Object.assign(document.createElement("style"),{id:"custom-font"});s.textContent="@font-face{font-family:StudioCustom;src:url("+data.font+")}";document.head.append(s);document.documentElement.style.setProperty("--display","StudioCustom, Georgia, serif");save();document.querySelector("#font-name").textContent=f.name};r.readAsDataURL(f)});
-document.addEventListener("mousemove",e=>{let o=document.querySelector(".cursor-orb");o.style.transform="translate("+(e.clientX-9)+"px,"+(e.clientY-9)+"px)"});document.addEventListener("pointerover",e=>{if(e.target.closest("a,button,input,textarea,select"))document.querySelector(".cursor-orb").classList.add("is-hovering")});document.addEventListener("pointerout",e=>{if(e.target.closest("a,button,input,textarea,select"))document.querySelector(".cursor-orb").classList.remove("is-hovering")});window.addEventListener("hashchange",render);let currentYear=document.querySelector("#current-year");if(currentYear)currentYear.textContent=new Date().getFullYear();if(data.font){let s=document.createElement("style");s.id="custom-font";s.textContent="@font-face{font-family:StudioCustom;src:url("+data.font+")}";document.head.append(s)}applyTheme();if(isAdmin)editor();else render();
+/* The public site and its editor use one small browser-only archive. */
+const STORAGE_KEY = "tiona-portfolio";
+const LEGACY_STORAGE_KEY = "moss-archive";
+const isAdmin = location.pathname.replace(/\/+$/, "").endsWith("/admin");
+const app = document.querySelector("#app");
+const modal = document.querySelector("#editor-modal");
+const cursor = document.querySelector(".cursor-orb");
+let editingId = null;
+
+const defaults = {
+  studioName: "Tiona Zeng",
+  accent: "#f2d591",
+  about: "I’m a student artist making pictures, poems, and playful things for the internet. I’m interested in soft colors, hard feelings, and the little worlds we carry around with us.",
+  email: "hello@example.com",
+  annotations: [
+    "student artist | I’m currently studying, experimenting, and building an archive as I go.",
+    "soft colors | I keep returning to colors that feel like a memory.",
+    "little worlds | A collection of tiny details, feelings, and references that shape each project."
+  ],
+  links: { linkedin: "", rednote: "", instagram: "", resume: "" },
+  projects: [],
+  archiveCleared: true
+};
+
+const labels = { "fine-art": "Fine art", writing: "Writing", projects: "Design" };
+const listingCopy = {
+  "fine-art": "A home for my experiments and artworks. I particularly love to play with color theory, and I like to incorporate written elements.",
+  writing: "Words will always be my first love, my favorite medium. I prefer English; incorporate Mandarin Chinese; and occasionally explore Japanese.",
+  projects: "Selected design work that I produced for “clients” such companies, clubs, and other such organizations."
+};
+const fallbackReading = [
+  { title: "In the Woods", author: "Tana French", url: "https://www.goodreads.com/book/show/2459785.In_the_Woods" },
+  { title: "Abundance", author: "Ezra Klein", url: "https://www.goodreads.com/book/show/176444106-abundance" }
+];
+const socialIcons = {
+  linkedin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>',
+  rednote: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
+  instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect width="20" height="20" x="2" y="2" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></svg>',
+  resume: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/></svg>'
+};
+
+function cloneDefaults() { return structuredClone(defaults); }
+
+function loadArchive() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY) || "null");
+    if (!saved) return cloneDefaults();
+    const archive = { ...cloneDefaults(), ...saved, links: { ...defaults.links, ...(saved.links || {}) } };
+    archive.annotations = Array.isArray(saved.annotations) ? saved.annotations : defaults.annotations;
+    // One deliberate migration: the demo archive is removed once for every browser.
+    if (!archive.archiveCleared) { archive.projects = []; archive.archiveCleared = true; }
+    return archive;
+  } catch { return cloneDefaults(); }
+}
+
+let data = loadArchive();
+
+function escapeHtml(value = "") {
+  return String(value).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[char]);
+}
+
+function externalUrl(value = "") {
+  const url = value.trim();
+  return url && !/^https?:\/\//i.test(url) ? `https://${url.replace(/^\/+/, "")}` : url;
+}
+
+function projectImages(project) {
+  return (project.gallery || project.images || []).map(item => typeof item === "string" ? { src: item, caption: "" } : item);
+}
+
+function saveArchive() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  applyTheme();
+}
+
+function applyTheme() {
+  document.documentElement.style.setProperty("--accent", data.accent);
+  document.title = `${data.studioName} — ${isAdmin ? "Studio editor" : "Portfolio"}`;
+  const wordmark = document.querySelector(".wordmark");
+  if (wordmark) wordmark.innerHTML = `${escapeHtml(data.studioName).replace(" ", "<br />")}<span>✶</span>`;
+}
+
+function createIcons() { window.lucide?.createIcons(); }
+function emptyShelf() { return '<p class="empty">This shelf is ready for your work.</p>'; }
+
+function card(project) {
+  const imageStyle = project.image ? `background-image:url(&quot;${escapeHtml(project.image)}&quot;)` : `background:${escapeHtml(project.color || "#f2d591")}`;
+  return `<a class="work-card" href="#${project.category}/${project.id}"><div class="card-image" style="${imageStyle}"></div><div class="card-meta"><span>${labels[project.category]}</span><span>${escapeHtml(project.year)}</span></div><h3 class="card-title">${escapeHtml(project.title)}</h3></a>`;
+}
+
+function aboutText() {
+  let copy = escapeHtml(data.about);
+  data.annotations.forEach((entry, index) => {
+    const [phrase, ...note] = entry.split("|");
+    if (!phrase?.trim() || !note.join("|").trim()) return;
+    copy = copy.replace(escapeHtml(phrase.trim()), `<button class="annotation" type="button"><span>${escapeHtml(phrase.trim())}</span><sup>${index + 1}</sup><span class="annotation-note">${escapeHtml(note.join("|").trim())}</span></button>`);
+  });
+  return copy;
+}
+
+function socialLinks() {
+  const links = Object.entries(data.links).map(([name, url]) => [name, externalUrl(url)]).filter(([, url]) => url);
+  return links.length ? `<nav class="about-links" aria-label="Social links">${links.map(([name, url]) => `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer" aria-label="${name}" title="${name}">${socialIcons[name]}<span class="visually-hidden">${name}</span></a>`).join("")}</nav>` : "";
+}
+
+function homeSection(label, title, href, linkText, content, className = "") {
+  return `<section class="home-sections ${className}"><div class="section-heading"><div><p>${label}</p><h2><a href="${href}">${title}</a></h2></div><a class="text-link" href="${href}">${linkText}</a></div><div class="feature-grid">${content}</div></section>`;
+}
+
+function marqueeContent() {
+  const phrase = '<span class="marquee-phrase">thanks for stopping by</span><span class="marquee-separator">✶</span>';
+  const group = phrase.repeat(4);
+  return `<span class="marquee-group">${group}</span><span class="marquee-group" aria-hidden="true">${group}</span>`;
+}
+
+function home() {
+  const art = data.projects.filter(project => project.category === "fine-art").slice(0, 3);
+  const writing = data.projects.filter(project => project.category === "writing").slice(0, 3);
+  const design = data.projects.filter(project => project.category === "projects").slice(0, 3);
+  const writingRows = writing.length ? writing.map(project => `<a class="writing-row" href="#writing/${project.id}"><span class="type">${escapeHtml(project.medium || "Writing")}</span><h3>${escapeHtml(project.title)}</h3><i data-lucide="arrow-up-right"></i></a>`).join("") : emptyShelf();
+  return `<section class="hero"><div><h1><em>welcome.</em></h1><p class="intro">Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)</p></div><div class="hero-art"><img src="assets/graphics/portfolio-graphic.svg" alt="" /></div><div class="hero-bottom"><span>scroll to explore my mind</span><span>student / artist / writer / designer <i data-lucide="arrow-down"></i></span></div></section><div class="marquee"><div class="marquee-track">${marqueeContent()}</div></div>${homeSection("01 / pieces that challenge me in every way", "fine art", "#fine-art", "see all work →", art.map(card).join("") || emptyShelf())}${homeSection("02 / shower & regular thoughts alike", "writing", "#writing", "read more →", writingRows)}${homeSection("03 / projects with clients", "design", "#projects", "see design work →", design.map(card).join("") || emptyShelf(), "design-preview")}<section class="about"><h2><em>nice to meet you, i’m tiona</em></h2><div class="about-copy"><p>${aboutText()}</p>${socialLinks()}</div></section>`;
+}
+
+function listing(category) {
+  const title = { "fine-art": "Fine<br />art", writing: "Creative<br />writing", projects: "Design<br />work" }[category];
+  const projects = data.projects.filter(project => project.category === category);
+  return `<section class="page"><div class="page-head"><h1>${title}</h1><p>${listingCopy[category]}</p></div><div class="project-grid">${projects.length ? projects.map(card).join("") : emptyShelf()}</div></section>`;
+}
+
+function detail(category, id) {
+  const project = data.projects.find(item => item.id === id);
+  if (!project) return listing(category);
+  const imageStyle = project.image ? `background-image:url(&quot;${escapeHtml(project.image)}&quot;)` : `background:${escapeHtml(project.color || "#f2d591")}`;
+  return `<article class="detail"><a class="back" href="#${category}"><i data-lucide="arrow-left"></i> back to ${labels[category]}</a><div class="detail-head"><h1>${escapeHtml(project.title)}</h1><div class="detail-meta"><span>${escapeHtml(project.year)}</span><span>${escapeHtml(project.medium || "Mixed media")}</span></div></div><div class="detail-image" style="${imageStyle}"></div><div class="detail-copy"><p>${escapeHtml(project.description || "A work in progress.")}</p><div><h3>credits</h3><p>${escapeHtml(project.credits || "—")}</p><h3>process notes</h3><p>${escapeHtml(project.notes || "Notes coming soon.")}</p>${project.link ? `<a href="${escapeHtml(externalUrl(project.link))}" target="_blank" rel="noreferrer">visit external link ↗</a>` : ""}</div></div></article>`;
+}
+
+function renderGallery(project) {
+  const images = projectImages(project).filter((image, index) => image.src !== project.image || index > 0);
+  if (!images.length) return;
+  const gallery = document.createElement("section");
+  gallery.className = "detail-gallery";
+  gallery.innerHTML = images.map(image => `<figure><img src="${escapeHtml(image.src)}" alt="Additional image from ${escapeHtml(project.title)}" loading="lazy" />${image.caption ? `<figcaption>${escapeHtml(image.caption)}</figcaption>` : ""}</figure>`).join("");
+  app.querySelector(".detail-image")?.after(gallery);
+}
+
+function renderReading(books) {
+  const about = app.querySelector(".about");
+  if (!about) return;
+  about.querySelector(".currently-reading")?.remove();
+  const section = document.createElement("section");
+  section.className = "currently-reading";
+  section.innerHTML = `<p class="eyebrow">currently reading</p><ol>${books.map(book => `<li><a href="${escapeHtml(book.url)}" target="_blank" rel="noreferrer"><em>${escapeHtml(book.title)}</em></a><span>by ${escapeHtml(book.author)}</span></li>`).join("")}</ol><a class="reading-profile" href="https://www.goodreads.com/user/show/34056305-tz" target="_blank" rel="noreferrer">view my goodreads →</a>`;
+  about.append(section);
+}
+
+function loadReading() {
+  renderReading(fallbackReading);
+  fetch("data/current-reading.json", { cache: "no-store" }).then(response => response.ok ? response.json() : Promise.reject()).then(payload => { if (Array.isArray(payload.books) && payload.books.length) renderReading(payload.books); }).catch(() => {});
+}
+
+function renderPublic() {
+  const [category = "home", id] = location.hash.slice(1).split("/");
+  const page = ["home", "fine-art", "writing", "projects"].includes(category) ? category : "home";
+  const project = id && data.projects.find(item => item.id === id);
+  app.classList.remove("page-enter"); void app.offsetWidth;
+  app.innerHTML = id ? detail(page, id) : page === "home" ? home() : listing(page);
+  if (project) renderGallery(project);
+  if (page === "home") loadReading();
+  app.classList.add("page-enter");
+  createIcons(); scrollTo(0, 0);
+}
+
+function populateEditor() {
+  document.querySelector("#about-copy").value = data.about;
+  document.querySelector("#about-annotations").value = data.annotations.join("\n");
+  document.querySelector("#about-email").value = data.email;
+  document.querySelector("#linkedin-url").value = data.links.linkedin;
+  document.querySelector("#rednote-url").value = data.links.rednote;
+  document.querySelector("#instagram-url").value = data.links.instagram;
+  document.querySelector("#resume-url").value = data.links.resume;
+  document.querySelector("#studio-name").value = data.studioName;
+  document.querySelector("#accent-color").value = data.accent;
+  document.querySelector("#font-name").textContent = data.fontName || "Sneaky Times selected — upload its file to embed it";
+}
+
+function renderProjectList() {
+  const list = document.querySelector("#project-list");
+  list.innerHTML = data.projects.length ? data.projects.map(project => `<button class="project-item" data-edit="${project.id}"><b>${escapeHtml(project.title)}</b><span>${escapeHtml(project.year)}</span><span>${labels[project.category]}</span><i data-lucide="pencil"></i></button>`).join("") : emptyShelf();
+  createIcons();
+}
+
+function openProjectForm(id = "") {
+  editingId = id || null;
+  const form = document.querySelector("#project-form");
+  const project = data.projects.find(item => item.id === id);
+  form.reset(); form.classList.remove("hidden");
+  document.querySelector("#form-title").textContent = project ? "edit project" : "new project";
+  document.querySelector(".delete-project").style.visibility = project ? "visible" : "hidden";
+  if (project) {
+    Object.entries(project).forEach(([key, value]) => { if (form.elements[key]) form.elements[key].value = value; });
+    form.elements.galleryCaptions.value = projectImages(project).map(image => image.caption || "").join("\n");
+  }
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function setupEditor() {
+  if (!modal) return;
+  modal.showModal(); modal.append(cursor);
+  populateEditor(); renderProjectList();
+  document.addEventListener("click", handleEditorClick);
+  document.querySelector("#project-form").addEventListener("submit", saveProject);
+  document.querySelector("#studio-name").addEventListener("input", event => { data.studioName = event.target.value || defaults.studioName; saveArchive(); });
+  document.querySelector("#accent-color").addEventListener("input", event => { data.accent = event.target.value; saveArchive(); });
+  document.querySelector("#font-upload").addEventListener("change", uploadFont);
+}
+
+function handleEditorClick(event) {
+  const target = event.target;
+  if (target.closest(".close-editor")) location.href = "../";
+  if (target.closest(".add-project")) openProjectForm();
+  if (target.closest(".cancel-edit")) document.querySelector("#project-form").classList.add("hidden");
+  const edit = target.closest("[data-edit]"); if (edit) openProjectForm(edit.dataset.edit);
+  const tab = target.closest(".editor-tab");
+  if (tab) { document.querySelectorAll(".editor-tab, .tab-panel").forEach(element => element.classList.remove("active")); tab.classList.add("active"); document.querySelector(`#${tab.dataset.tab}-tab`).classList.add("active"); }
+  if (target.closest(".delete-project") && editingId) { data.projects = data.projects.filter(project => project.id !== editingId); saveArchive(); document.querySelector("#project-form").classList.add("hidden"); renderProjectList(); }
+  if (target.closest(".save-about")) {
+    data.about = document.querySelector("#about-copy").value;
+    data.annotations = document.querySelector("#about-annotations").value.split("\n").map(note => note.trim()).filter(Boolean);
+    data.email = document.querySelector("#about-email").value;
+    data.links = { linkedin: externalUrl(document.querySelector("#linkedin-url").value), rednote: externalUrl(document.querySelector("#rednote-url").value), instagram: externalUrl(document.querySelector("#instagram-url").value), resume: externalUrl(document.querySelector("#resume-url").value) };
+    saveArchive();
+  }
+  if (target.closest(".export-data")) {
+    const download = document.createElement("a");
+    download.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+    download.download = "tiona-zeng-archive.json"; download.click(); URL.revokeObjectURL(download.href);
+  }
+}
+
+function readImage(file) {
+  return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
+}
+
+async function saveProject(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const values = Object.fromEntries(new FormData(form));
+  const existing = data.projects.find(project => project.id === values.id);
+  const uploads = await Promise.all([...form.elements.galleryFiles.files].slice(0, 8).map(readImage));
+  const urls = values.galleryUrls.split(/\n|,/).map(url => url.trim()).filter(Boolean);
+  const previous = existing ? projectImages(existing) : [];
+  const sources = [...new Set([...previous.map(image => image.src), ...urls, ...uploads])].slice(0, 8);
+  const captions = values.galleryCaptions.split("\n");
+  delete values.galleryFiles; delete values.galleryUrls; delete values.galleryCaptions;
+  values.id = values.id || `${values.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${Date.now().toString().slice(-4)}`;
+  values.gallery = sources.map((src, index) => ({ src, caption: captions[index] || previous.find(image => image.src === src)?.caption || "" }));
+  values.images = sources; values.image = values.image || sources[0] || existing?.image || "";
+  values.color = existing?.color || ["#f2d591", "#d6ddec", "#d9c6e8", "#c3d8bd"][data.projects.length % 4];
+  const index = data.projects.findIndex(project => project.id === values.id);
+  if (index >= 0) data.projects[index] = values; else data.projects.unshift(values);
+  saveArchive(); form.classList.add("hidden"); renderProjectList();
+}
+
+function uploadFont(event) {
+  const file = event.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => { data.font = reader.result; data.fontName = file.name; const style = document.querySelector("#custom-font") || Object.assign(document.createElement("style"), { id: "custom-font" }); style.textContent = `@font-face{font-family:StudioCustom;src:url(${data.font})}`; document.head.append(style); document.documentElement.style.setProperty("--display", "StudioCustom, SneakyTimes, serif"); saveArchive(); document.querySelector("#font-name").textContent = file.name; };
+  reader.readAsDataURL(file);
+}
+
+function setupCursor() {
+  if (!cursor) return;
+  window.addEventListener("pointermove", event => { cursor.style.transform = `translate(${event.clientX}px, ${event.clientY}px)`; });
+  document.addEventListener("pointerover", event => cursor.classList.toggle("is-hovering", Boolean(event.target.closest("a, button, input, select, textarea, label"))));
+}
+
+function setupAnnotations() {
+  document.addEventListener("click", event => { const annotation = event.target.closest(".annotation"); if (!annotation) return; document.querySelectorAll(".annotation.open").forEach(item => { if (item !== annotation) item.classList.remove("open"); }); annotation.classList.toggle("open"); });
+}
+
+applyTheme(); setupCursor();
+if (isAdmin) {
+  setupEditor();
+} else {
+  document.querySelector("#current-year").textContent = new Date().getFullYear();
+  window.addEventListener("hashchange", renderPublic);
+  setupAnnotations(); renderPublic();
+}
