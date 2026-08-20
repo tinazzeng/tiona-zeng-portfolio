@@ -14,6 +14,7 @@ const sb = window.supabase && supabaseConfig.url && supabaseConfig.publishableKe
 let editingId = null;
 let currentUser = null;
 let archiveOwner = null;
+let isRecoveringPassword = location.hash.includes("type=recovery");
 
 const defaults = {
   studioName: "Tiona Zeng",
@@ -275,6 +276,24 @@ function renderEditorGate(message = "Sign in to manage your portfolio.") {
   document.querySelector("#editor-login")?.addEventListener("submit", signInEditor);
 }
 
+function renderPasswordRecovery() {
+  app.innerHTML = `<section class="editor-auth"><p class="eyebrow">YOUR BACKSTAGE</p><h1>new<br /><em>password</em></h1><p>Choose a new password for the studio editor.</p><form id="editor-recovery"><label>New password<input name="password" type="password" autocomplete="new-password" minlength="8" required /></label><label>Confirm new password<input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" required /></label><button class="button dark" type="submit">save new password</button><p class="form-notice" aria-live="polite"></p></form></section>`;
+  document.querySelector("#editor-recovery")?.addEventListener("submit", finishPasswordRecovery);
+}
+
+async function finishPasswordRecovery(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const values = Object.fromEntries(new FormData(form));
+  const notice = form.querySelector(".form-notice");
+  if (values.password !== values.confirmPassword) { notice.textContent = "Those passwords do not match."; return; }
+  const { error } = await sb.auth.updateUser({ password: values.password });
+  if (error) { notice.textContent = error.message; return; }
+  await sb.auth.signOut();
+  history.replaceState({}, "", location.pathname);
+  renderEditorGate("Password updated. Sign in with your new password.");
+}
+
 async function signInEditor(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -408,6 +427,7 @@ async function startApp() {
   applyTheme(); setupCursor();
   if (isAdmin) {
     if (!sb) { renderEditorGate("The hosted editor connection is missing."); return; }
+    if (isRecoveringPassword) { renderPasswordRecovery(); return; }
     const { data: auth } = await sb.auth.getUser();
     currentUser = auth.user;
     if (!currentUser) { renderEditorGate(); return; }
@@ -419,6 +439,15 @@ async function startApp() {
   if (currentYear) currentYear.textContent = new Date().getFullYear();
   window.addEventListener("hashchange", renderPublic);
   setupAnnotations(); renderPublic();
+}
+
+if (isAdmin && sb) {
+  sb.auth.onAuthStateChange((event) => {
+    if (event === "PASSWORD_RECOVERY") {
+      isRecoveringPassword = true;
+      renderPasswordRecovery();
+    }
+  });
 }
 
 startApp();
