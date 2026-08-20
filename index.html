@@ -3,93 +3,61 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="robots" content="noindex, nofollow" />
-    <link rel="icon" href="../favicon.svg?v=20260820-1" type="image/svg+xml" />
-    <title>Tiona Zeng — Studio Editor</title>
+    <meta name="description" content="Tiona Zeng is a student artist, writer, and designer. Explore her fine art, creative writing, and client design work." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://tiona.studio/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://tiona.studio/" />
+    <meta property="og:title" content="Tiona Zeng — Artist, writer, designer" />
+    <meta property="og:description" content="Fine art, creative writing, and design work by Tiona Zeng." />
+    <meta name="twitter:card" content="summary" />
+    <link rel="icon" href="favicon.svg?v=20260820-1" type="image/svg+xml" />
+    <title>Tiona Zeng — Portfolio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../styles.css" />
-    <link rel="stylesheet" href="../overrides.css?v=20260820-10" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="overrides.css?v=20260820-10" />
   </head>
-  <body class="admin-page">
+  <body>
     <div class="grain"></div>
     <div class="cursor-orb" aria-hidden="true"></div>
+    <header class="site-header">
+      <a class="wordmark nav-link" href="#home" data-page="home">Tiona<br />Zeng<span>✶</span></a>
+      <nav aria-label="Primary navigation">
+        <a class="nav-link" href="#fine-art">Fine Art</a>
+        <a class="nav-link" href="#writing">Writing</a>
+        <a class="nav-link" href="#projects">Design</a>
+      </nav>
+    </header>
     <main id="app"></main>
-    <dialog id="editor-modal">
-      <div class="editor-shell">
-        <aside class="editor-sidebar">
-          <div><p class="eyebrow">YOUR BACKSTAGE</p><h2>Studio<br /><em>Editor</em></h2></div>
-          <div class="editor-tabs" role="tablist">
-            <button class="editor-tab active" data-tab="content"><i data-lucide="folder-pen"></i> Projects</button>
-            <button class="editor-tab" data-tab="media"><i data-lucide="images"></i> Media library</button>
-            <button class="editor-tab" data-tab="appearance"><i data-lucide="palette"></i> Appearance</button>
-            <button class="editor-tab" data-tab="about"><i data-lucide="smile-plus"></i> About you</button>
-          </div>
-          <div class="editor-help"><i data-lucide="lightbulb"></i><span>Everything saves in this browser automatically. Export a copy before publishing.</span></div>
-        </aside>
-        <section class="editor-main">
-          <button class="close-editor" type="button" aria-label="Return to site"><i data-lucide="x"></i></button>
-          <div id="content-tab" class="tab-panel active">
-            <div class="editor-heading"><div><p class="eyebrow">THE ARCHIVE</p><h3>Your work</h3></div><button class="button dark add-project"><i data-lucide="plus"></i> Add project</button></div>
-            <div class="project-list" id="project-list"></div>
-            <form id="project-form" class="project-form hidden">
-              <div class="form-heading"><h3 id="form-title">New project</h3><button type="button" class="text-button cancel-edit">Cancel</button></div>
-              <input type="hidden" name="id" />
-              <div class="form-grid">
-                <label>Title<input required name="title" placeholder="Untitled piece" /></label>
-                <label>Year<input required name="year" placeholder="2026" /></label>
-                <label>Section<select name="category"><option value="fine-art">Fine Art</option><option value="writing">Writing</option><option value="projects">Design</option></select></label>
-                <label>Medium<input name="medium" placeholder="Photography, poem, campaign..." /></label>
-              </div>
-              <label>Cover image URL<input name="image" placeholder="https://... (optional)" /></label>
-              <label class="upload-field">Gallery media <input id="gallery-upload" name="galleryFiles" type="file" accept="image/*,video/mp4,application/pdf,.pdf" multiple /><span><i data-lucide="images"></i> Choose images, PDFs, or MP4s</span><small>Select several files in the picker, or click here again to add more. Your first image becomes the cover.</small><small id="gallery-file-names" class="attached-files" aria-live="polite"></small></label>
-              <label>Or add image / PDF / MP4 URLs<textarea name="galleryUrls" rows="3" placeholder="One public media URL per line"></textarea></label>
-              <div id="gallery-order" class="gallery-order" aria-live="polite"><p class="small-copy">After you save, you can reorder files, remove them from this project, and add captions here.</p></div>
-              <label>Short description<textarea name="description" rows="3" placeholder="A little introduction to the work."></textarea></label>
-              <div class="form-grid"><label>Credits<input name="credits" placeholder="Creative direction, photo..." /></label><label>External link<input name="link" placeholder="https://..." /></label></div>
-              <label>More information<div class="format-tools" aria-label="More information formatting"><button class="text-button" type="button" data-format-for="notes" data-format="bold"><strong>B</strong> bold</button><button class="text-button" type="button" data-format-for="notes" data-format="italic"><em>I</em> italic</button></div><textarea name="notes" rows="4" placeholder="What did you notice, make, or learn?"></textarea></label>
-              <div class="form-actions"><button class="button dark" type="submit"><i data-lucide="check"></i> Save project</button><button class="text-button preview-project" type="button">Preview on site</button><button class="text-button delete-project" type="button">Delete project</button></div>
-            </form>
-          </div>
-          <div id="media-tab" class="tab-panel">
-            <div class="editor-heading"><div><p class="eyebrow">YOUR FILES</p><h3>Media library</h3></div></div>
-            <p class="small-copy">Files are automatically sorted into folders. Deleting a file here permanently removes it from every project that uses it.</p>
-            <div id="media-library" class="media-library" aria-live="polite"></div>
-          </div>
-          <div id="appearance-tab" class="tab-panel">
-            <div class="editor-heading"><div><p class="eyebrow">MAKE IT YOURS</p><h3>Look &amp; feel</h3></div></div>
-            <div class="appearance-grid"><label>Studio name<input id="studio-name" placeholder="Tiona Zeng" /></label><label>Accent color<input id="accent-color" type="color" value="#f2d591" /></label></div>
-            <label class="upload-field">Display font <input id="font-upload" type="file" accept=".woff,.woff2,.ttf,.otf" /><span><i data-lucide="upload"></i> Add the Sneaky Times font file</span><small id="font-name">Sneaky Times selected — upload its file to embed it</small></label>
-          </div>
-          <div id="about-tab" class="tab-panel">
-            <div class="editor-heading"><div><p class="eyebrow">NICE TO MEET YOU</p><h3>About you</h3></div></div>
-            <label>Short intro<textarea id="about-copy" rows="6"></textarea></label>
-            <label>Annotations<textarea id="about-annotations" rows="5" placeholder="student artist | A little note about your practice&#10;soft colors | Why this keeps showing up in your work"></textarea><small>One per line: phrase | annotation. Matching phrases become numbered, clickable footnotes.</small></label>
-            <label>Email<input id="about-email" type="email" placeholder="hello@example.com" /></label>
-            <div class="form-grid about-links-fields">
-              <label>LinkedIn URL<input id="linkedin-url" type="url" placeholder="https://linkedin.com/in/your-name" /></label>
-              <label>RedNote URL<input id="rednote-url" type="url" placeholder="https://www.xiaohongshu.com/user/profile/..." /></label>
-              <label>Instagram URL<input id="instagram-url" type="url" placeholder="https://instagram.com/your-name" /></label>
-              <label>Resume URL<input id="resume-url" type="url" placeholder="https://.../resume.pdf" /></label>
-            </div>
-            <p class="small-copy">Paste each public link here. If you leave off <em>https://</em>, it will be added for you.</p>
-            <button class="button dark save-about" type="button"><i data-lucide="check"></i> Save changes</button>
-            <form id="editor-password" class="editor-password">
-              <p class="eyebrow">EDITOR SECURITY</p>
-              <label>New password<input name="password" type="password" autocomplete="new-password" minlength="8" required /></label>
-              <label>Confirm new password<input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
-              <button class="text-button" type="submit">change password</button>
-              <p class="form-notice" aria-live="polite"></p>
-            </form>
-          </div>
-          <div class="editor-bottom"><button class="text-button export-data"><i data-lucide="download"></i> Export archive</button></div>
-        </section>
-      </div>
-    </dialog>
+    <footer>
+      <span>fonts: Sneaky Times &amp; Helvetica Neue</span>
+      <span>✶ drink water &amp; have a good day ✶</span>
+      <a href="mailto:hello@example.com">SAY HELLO <i data-lucide="arrow-up-right"></i></a>
+    </footer>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-    <script src="../supabase-config.js?v=20260820-1"></script>
-    <script src="../app.js?v=20260820-23"></script>
+    <script src="supabase-config.js?v=20260820-1"></script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Person",
+            "name": "Tiona Zeng",
+            "url": "https://tiona.studio/",
+            "jobTitle": "Artist, writer, and designer",
+            "description": "Tiona Zeng is a student artist, writer, and designer."
+          },
+          {
+            "@type": "WebSite",
+            "name": "Tiona Zeng",
+            "url": "https://tiona.studio/"
+          }
+        ]
+      }
+    </script>
+    <script src="app.js?v=20260820-23"></script>
   </body>
 </html>
