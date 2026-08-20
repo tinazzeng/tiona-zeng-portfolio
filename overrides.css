@@ -857,6 +857,54 @@ button:active,
   font: 12px/1.4 var(--mono);
 }
 
+/* Project galleries use a consistent, centered viewing scale. */
+.detail-gallery {
+  justify-content: flex-start;
+  margin: 0 auto clamp(3.5rem, 6vw, 6rem);
+  max-width: min(880px, calc(100% - 8vw));
+}
+
+.detail-gallery figure {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  justify-content: flex-start;
+  max-width: min(70vw, 680px);
+}
+
+.detail-gallery figure:only-child {
+  margin-inline: auto;
+}
+
+.detail-gallery img,
+.detail-gallery video {
+  height: clamp(250px, 42vw, 470px);
+  max-width: min(70vw, 680px);
+  object-fit: contain;
+  width: auto;
+}
+
+.detail-gallery figcaption {
+  align-self: stretch;
+}
+
+@media (max-width: 700px) {
+  .detail-gallery {
+    max-width: calc(100% - 40px);
+  }
+
+  .detail-gallery figure {
+    max-width: 78vw;
+  }
+
+  .detail-gallery img,
+  .detail-gallery video {
+    height: min(48vh, 340px);
+    max-width: 78vw;
+  }
+}
+
 .cursor-orb {
   opacity: 0;
   transition: opacity .12s ease, background .18s ease;
