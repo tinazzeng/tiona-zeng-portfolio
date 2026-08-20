@@ -282,7 +282,8 @@ applyTheme(); setupCursor();
 if (isAdmin) {
   setupEditor();
 } else {
-  document.querySelector("#current-year").textContent = new Date().getFullYear();
+  const currentYear = document.querySelector("#current-year");
+  if (currentYear) currentYear.textContent = new Date().getFullYear();
   window.addEventListener("hashchange", renderPublic);
   setupAnnotations(); renderPublic();
 }
