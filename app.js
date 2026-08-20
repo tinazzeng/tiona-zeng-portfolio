@@ -1,11 +1,19 @@
-/* The public site and its editor use one small browser-only archive. */
+/* The public site and editor share one hosted archive, with a small local backup. */
 const STORAGE_KEY = "tiona-portfolio";
 const LEGACY_STORAGE_KEY = "moss-archive";
+const CONTENT_TABLE = "portfolio_content";
+const MEDIA_BUCKET = "portfolio-media";
 const isAdmin = ["/admin", "/applepie"].includes(location.pathname.replace(/\/+$/, ""));
 const app = document.querySelector("#app");
 const modal = document.querySelector("#editor-modal");
 const cursor = document.querySelector(".cursor-orb");
+const supabaseConfig = window.SUPABASE_CONFIG || {};
+const sb = window.supabase && supabaseConfig.url && supabaseConfig.publishableKey
+  ? window.supabase.createClient(supabaseConfig.url, supabaseConfig.publishableKey)
+  : null;
 let editingId = null;
+let currentUser = null;
+let archiveOwner = null;
 
 const defaults = {
   studioName: "Tiona Zeng",
@@ -75,9 +83,39 @@ function projectImages(project) {
   });
 }
 
-function saveArchive() {
+function saveLocalArchive() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   applyTheme();
+}
+
+async function hydrateArchive() {
+  if (!sb) return;
+  const { data: remote, error } = await sb
+    .from(CONTENT_TABLE)
+    .select("content, owner")
+    .eq("id", "site")
+    .maybeSingle();
+  if (error) throw error;
+  if (!remote) return;
+  archiveOwner = remote.owner;
+  const content = remote.content || {};
+  data = { ...cloneDefaults(), ...content, links: { ...defaults.links, ...(content.links || {}) } };
+  data.annotations = Array.isArray(content.annotations) ? content.annotations : defaults.annotations;
+  saveLocalArchive();
+}
+
+async function saveArchive() {
+  saveLocalArchive();
+  if (!sb) return;
+  if (!currentUser) throw new Error("Sign in to save changes and upload media.");
+  const { error } = await sb.from(CONTENT_TABLE).upsert({
+    id: "site",
+    content: data,
+    owner: archiveOwner || currentUser.id,
+    updated_at: new Date().toISOString()
+  }, { onConflict: "id" });
+  if (error) throw error;
+  archiveOwner = archiveOwner || currentUser.id;
 }
 
 function applyTheme() {
@@ -125,7 +163,7 @@ function home() {
   const writing = data.projects.filter(project => project.category === "writing").slice(0, 3);
   const design = data.projects.filter(project => project.category === "projects").slice(0, 3);
   const writingRows = writing.length ? writing.map(project => `<a class="writing-row" href="#writing/${project.id}"><span class="type">${escapeHtml(project.medium || "Writing")}</span><h3>${escapeHtml(project.title)}</h3><i data-lucide="arrow-up-right"></i></a>`).join("") : emptyShelf();
-  return `<section class="hero"><div><h1><em>welcome.</em></h1><p class="intro">Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)</p></div><div class="hero-art"><img src="assets/graphics/portfolio-graphic.svg?v=20260820-7" alt="" /></div><div class="hero-bottom"><span>scroll to explore my mind</span><span>student / artist / writer / designer <i data-lucide="arrow-down"></i></span></div></section><div class="marquee"><div class="marquee-track">${marqueeContent()}</div></div>${homeSection("01 / pieces that challenge me in every way", "fine art", "#fine-art", "see all work →", art.map(card).join("") || emptyShelf())}${homeSection("02 / shower & regular thoughts alike", "writing", "#writing", "read more →", writingRows)}${homeSection("03 / projects with clients", "design", "#projects", "see design work →", design.map(card).join("") || emptyShelf(), "design-preview")}<section class="about"><h2><em>nice to meet you, i’m tiona</em></h2><div class="about-copy"><p>${aboutText()}</p>${socialLinks()}</div></section>`;
+  return `<section class="hero"><div><h1><em>welcome.</em></h1><p class="intro">Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)</p></div><div class="hero-art"><img src="assets/graphics/portfolio-graphic.svg?v=20260820-8" alt="" /></div><div class="hero-bottom"><span>scroll to explore my mind</span><span>student / artist / writer / designer <i data-lucide="arrow-down"></i></span></div></section><div class="marquee"><div class="marquee-track">${marqueeContent()}</div></div>${homeSection("01 / pieces that challenge me in every way", "fine art", "#fine-art", "see all work →", art.map(card).join("") || emptyShelf())}${homeSection("02 / shower & regular thoughts alike", "writing", "#writing", "read more →", writingRows)}${homeSection("03 / projects with clients", "design", "#projects", "see design work →", design.map(card).join("") || emptyShelf(), "design-preview")}<section class="about"><h2><em>nice to meet you, i’m tiona</em></h2><div class="about-copy"><p>${aboutText()}</p>${socialLinks()}</div></section>`;
 }
 
 function listing(category) {
@@ -216,12 +254,40 @@ function setupEditor() {
   populateEditor(); renderProjectList();
   document.addEventListener("click", handleEditorClick);
   document.querySelector("#project-form").addEventListener("submit", saveProject);
-  document.querySelector("#studio-name").addEventListener("input", event => { data.studioName = event.target.value || defaults.studioName; saveArchive(); });
-  document.querySelector("#accent-color").addEventListener("input", event => { data.accent = event.target.value; saveArchive(); });
+  document.querySelector("#studio-name").addEventListener("input", event => { data.studioName = event.target.value || defaults.studioName; saveLocalArchive(); });
+  document.querySelector("#accent-color").addEventListener("input", event => { data.accent = event.target.value; saveLocalArchive(); });
   document.querySelector("#font-upload").addEventListener("change", uploadFont);
 }
 
-function handleEditorClick(event) {
+function renderEditorGate(message = "Sign in to manage your portfolio.") {
+  app.innerHTML = `<section class="editor-auth"><p class="eyebrow">YOUR BACKSTAGE</p><h1>studio<br /><em>editor</em></h1><p>${escapeHtml(message)}</p><form id="editor-login"><label>Email<input name="email" type="email" autocomplete="email" required /></label><label>Password<input name="password" type="password" autocomplete="current-password" required /></label><button class="button dark" type="submit">sign in</button><p class="form-notice" aria-live="polite"></p></form></section>`;
+  document.querySelector("#editor-login")?.addEventListener("submit", signInEditor);
+}
+
+async function signInEditor(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const values = Object.fromEntries(new FormData(form));
+  const notice = form.querySelector(".form-notice");
+  if (!sb) { notice.textContent = "The hosted archive is not configured yet."; return; }
+  notice.textContent = "Signing in…";
+  const { data: auth, error } = await sb.auth.signInWithPassword(values);
+  if (error) { notice.textContent = error.message; return; }
+  currentUser = auth.user;
+  try {
+    await hydrateArchive();
+    if (archiveOwner && archiveOwner !== currentUser.id) {
+      renderEditorGate("This editor belongs to a different account.");
+      return;
+    }
+    app.innerHTML = "";
+    setupEditor();
+  } catch (loadError) {
+    notice.textContent = loadError.message || "Unable to load the hosted archive.";
+  }
+}
+
+async function handleEditorClick(event) {
   const target = event.target;
   if (target.closest(".close-editor")) location.href = "../";
   if (target.closest(".add-project")) openProjectForm();
@@ -234,13 +300,18 @@ function handleEditorClick(event) {
   }
   const tab = target.closest(".editor-tab");
   if (tab) { document.querySelectorAll(".editor-tab, .tab-panel").forEach(element => element.classList.remove("active")); tab.classList.add("active"); document.querySelector(`#${tab.dataset.tab}-tab`).classList.add("active"); }
-  if (target.closest(".delete-project") && editingId) { data.projects = data.projects.filter(project => project.id !== editingId); saveArchive(); document.querySelector("#project-form").classList.add("hidden"); renderProjectList(); }
+  if (target.closest(".delete-project") && editingId) {
+    data.projects = data.projects.filter(project => project.id !== editingId);
+    try { await saveArchive(); document.querySelector("#project-form").classList.add("hidden"); renderProjectList(); }
+    catch (error) { showFormNotice(document.querySelector("#project-form"), error.message || "Unable to delete this project."); }
+  }
   if (target.closest(".save-about")) {
     data.about = document.querySelector("#about-copy").value;
     data.annotations = document.querySelector("#about-annotations").value.split("\n").map(note => note.trim()).filter(Boolean);
     data.email = document.querySelector("#about-email").value;
     data.links = { linkedin: externalUrl(document.querySelector("#linkedin-url").value), rednote: externalUrl(document.querySelector("#rednote-url").value), instagram: externalUrl(document.querySelector("#instagram-url").value), resume: externalUrl(document.querySelector("#resume-url").value) };
-    saveArchive();
+    try { await saveArchive(); showFormNotice(document.querySelector("#about-tab"), "changes saved.", "success"); }
+    catch (error) { showFormNotice(document.querySelector("#about-tab"), error.message || "Unable to save changes."); }
   }
   if (target.closest(".export-data")) {
     const download = document.createElement("a");
@@ -249,13 +320,29 @@ function handleEditorClick(event) {
   }
 }
 
-function readMedia(file) {
-  return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
-}
-
 function showFormNotice(form, message, type = "error") {
   form.querySelector(".form-notice")?.remove();
-  form.querySelector(".form-actions").insertAdjacentHTML("beforebegin", `<p class="form-notice ${type}" role="status">${escapeHtml(message)}</p>`);
+  const notice = `<p class="form-notice ${type}" role="status">${escapeHtml(message)}</p>`;
+  const actions = form.querySelector(".form-actions");
+  if (actions) actions.insertAdjacentHTML("beforebegin", notice);
+  else form.insertAdjacentHTML("beforeend", notice);
+}
+
+function safeMediaName(file) {
+  return file.name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "upload";
+}
+
+async function uploadMedia(file) {
+  if (!sb || !currentUser) throw new Error("Sign in to upload images and videos.");
+  const path = `${currentUser.id}/${Date.now()}-${crypto.randomUUID()}-${safeMediaName(file)}`;
+  const { error } = await sb.storage.from(MEDIA_BUCKET).upload(path, file, {
+    cacheControl: "3600",
+    contentType: file.type,
+    upsert: false
+  });
+  if (error) throw error;
+  const { data: publicUrl } = sb.storage.from(MEDIA_BUCKET).getPublicUrl(path);
+  return publicUrl.publicUrl;
 }
 
 async function saveProject(event) {
@@ -265,7 +352,8 @@ async function saveProject(event) {
     const files = [...form.elements.galleryFiles.files].slice(0, 8);
     const values = Object.fromEntries(new FormData(form));
     const existing = data.projects.find(project => project.id === values.id);
-    const uploads = await Promise.all(files.map(readMedia));
+    showFormNotice(form, files.length ? "Uploading media…" : "Saving project…", "success");
+    const uploads = await Promise.all(files.map(uploadMedia));
     const urls = values.galleryUrls.split(/\n|,/).map(url => url.trim()).filter(Boolean);
     const previous = existing ? projectImages(existing) : [];
     const sources = [...new Set([...previous.map(image => image.src), ...urls, ...uploads])].slice(0, 8);
@@ -278,12 +366,10 @@ async function saveProject(event) {
     values.color = existing?.color || ["#f2d591", "#d6ddec", "#d9c6e8", "#c3d8bd"][data.projects.length % 4];
     const index = data.projects.findIndex(project => project.id === values.id);
     if (index >= 0) data.projects[index] = values; else data.projects.unshift(values);
-    saveArchive(); editingId = values.id; renderProjectList();
+    await saveArchive(); editingId = values.id; renderProjectList();
     showFormNotice(form, existing ? "project updated — preview it on the site or keep editing." : "project saved — preview it on the site or keep editing.", "success");
   } catch (error) {
-    const message = error.name === "QuotaExceededError"
-      ? "Your browser has run out of local storage for media. Use a public MP4 URL or remove an older upload, then try again."
-      : error.message || "That file could not be read. Try again or use a public media URL.";
+    const message = error.message || "That file could not be uploaded. Try again or use a public media URL.";
     showFormNotice(form, message);
   }
 }
@@ -291,7 +377,7 @@ async function saveProject(event) {
 function uploadFont(event) {
   const file = event.target.files[0]; if (!file) return;
   const reader = new FileReader();
-  reader.onload = () => { data.font = reader.result; data.fontName = file.name; const style = document.querySelector("#custom-font") || Object.assign(document.createElement("style"), { id: "custom-font" }); style.textContent = `@font-face{font-family:StudioCustom;src:url(${data.font})}`; document.head.append(style); document.documentElement.style.setProperty("--display", "StudioCustom, SneakyTimes, serif"); saveArchive(); document.querySelector("#font-name").textContent = file.name; };
+  reader.onload = () => { data.font = reader.result; data.fontName = file.name; const style = document.querySelector("#custom-font") || Object.assign(document.createElement("style"), { id: "custom-font" }); style.textContent = `@font-face{font-family:StudioCustom;src:url(${data.font})}`; document.head.append(style); document.documentElement.style.setProperty("--display", "StudioCustom, SneakyTimes, serif"); saveLocalArchive(); document.querySelector("#font-name").textContent = file.name; };
   reader.readAsDataURL(file);
 }
 
@@ -305,12 +391,23 @@ function setupAnnotations() {
   document.addEventListener("click", event => { const annotation = event.target.closest(".annotation"); if (!annotation) return; document.querySelectorAll(".annotation.open").forEach(item => { if (item !== annotation) item.classList.remove("open"); }); annotation.classList.toggle("open"); });
 }
 
-applyTheme(); setupCursor();
-if (isAdmin) {
-  setupEditor();
-} else {
+async function startApp() {
+  try { await hydrateArchive(); }
+  catch (error) { console.warn("Unable to load the hosted archive:", error); }
+  applyTheme(); setupCursor();
+  if (isAdmin) {
+    if (!sb) { renderEditorGate("The hosted editor connection is missing."); return; }
+    const { data: auth } = await sb.auth.getUser();
+    currentUser = auth.user;
+    if (!currentUser) { renderEditorGate(); return; }
+    if (archiveOwner && archiveOwner !== currentUser.id) { renderEditorGate("This editor belongs to a different account."); return; }
+    setupEditor();
+    return;
+  }
   const currentYear = document.querySelector("#current-year");
   if (currentYear) currentYear.textContent = new Date().getFullYear();
   window.addEventListener("hashchange", renderPublic);
   setupAnnotations(); renderPublic();
 }
+
+startApp();

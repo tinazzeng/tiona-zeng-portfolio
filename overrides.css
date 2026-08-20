@@ -464,3 +464,30 @@ a[target="_blank"] {
   72% { opacity: .12; }
   100% { opacity: 0; transform: scale(1.7); }
 }
+
+.admin-page #app {
+  display: block;
+  min-height: 100dvh;
+}
+
+.editor-auth {
+  width: min(520px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 12vh 0 8vh;
+}
+
+.editor-auth h1 {
+  margin: 14px 0 34px;
+  font: 500 clamp(4rem, 11vw, 8rem)/.76 var(--display);
+  letter-spacing: -0.01em;
+}
+
+.editor-auth > p {
+  max-width: 34rem;
+  margin-bottom: 28px;
+  font-size: 1.05rem;
+}
+
+.editor-auth form {
+  max-width: 380px;
+}
