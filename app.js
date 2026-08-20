@@ -446,8 +446,15 @@ async function saveProject(event) {
     const files = [...pendingMediaFiles, ...form.elements.galleryFiles.files];
     const values = Object.fromEntries(new FormData(form));
     const existing = data.projects.find(project => project.id === values.id);
-    showFormNotice(form, files.length ? "Uploading media…" : "Saving project…", "success");
-    const uploads = await Promise.all(files.map(uploadMedia));
+    const uploads = [];
+    if (files.length) {
+      for (const [index, file] of files.entries()) {
+        showFormNotice(form, `Uploading ${index + 1} of ${files.length}: ${file.name}`, "success");
+        uploads.push(await uploadMedia(file));
+      }
+    } else {
+      showFormNotice(form, "Saving project…", "success");
+    }
     const urls = values.galleryUrls.split(/\n|,/).map(url => url.trim()).filter(Boolean);
     const previous = existing ? projectImages(existing) : [];
     const sources = [...new Set([...previous.map(image => image.src), ...urls, ...uploads])];
