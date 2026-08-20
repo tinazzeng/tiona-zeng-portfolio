@@ -120,7 +120,7 @@ async function saveArchive() {
 
 function applyTheme() {
   document.documentElement.style.setProperty("--accent", data.accent);
-  document.title = `${data.studioName} — ${isAdmin ? "Studio editor" : "Portfolio"}`;
+  document.title = `${data.studioName} — ${isAdmin ? "Studio Editor" : "Portfolio"}`;
   const wordmark = document.querySelector(".wordmark");
   if (wordmark) wordmark.innerHTML = `${escapeHtml(data.studioName).replace(" ", "<br />")}<span>✶</span>`;
 }
