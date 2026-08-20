@@ -3,7 +3,7 @@ const STORAGE_KEY = "tiona-portfolio";
 const LEGACY_STORAGE_KEY = "moss-archive";
 const CONTENT_TABLE = "portfolio_content";
 const MEDIA_BUCKET = "portfolio-media";
-const isAdmin = ["/admin", "/applepie"].includes(location.pathname.replace(/\/+$/, ""));
+const isAdmin = location.pathname.replace(/\/+$/, "") === "/applepie";
 const app = document.querySelector("#app");
 const modal = document.querySelector("#editor-modal");
 const cursor = document.querySelector(".cursor-orb");
@@ -15,6 +15,8 @@ let editingId = null;
 let currentUser = null;
 let archiveOwner = null;
 let pendingMediaFiles = [];
+let mediaLibrary = [];
+let mediaLibraryLoaded = false;
 const recoveryHash = new URLSearchParams(location.hash.slice(1));
 const recoveryQuery = new URLSearchParams(location.search);
 let isRecoveringPassword = recoveryHash.get("type") === "recovery" || recoveryQuery.has("code");
@@ -90,6 +92,37 @@ function projectImages(project) {
     const media = typeof item === "string" ? { src: item, caption: "" } : item;
     return { ...media, type: media.type || (isPdfSource(media.src) ? "pdf" : isVideoSource(media.src) ? "video" : "image") };
   });
+}
+
+function mediaKind(source = "") {
+  return isPdfSource(source) ? "pdf" : isVideoSource(source) ? "video" : "image";
+}
+
+function storagePathFromUrl(source = "") {
+  try {
+    const marker = `/storage/v1/object/public/${MEDIA_BUCKET}/`;
+    const path = new URL(source).pathname;
+    return path.includes(marker) ? decodeURIComponent(path.split(marker)[1]) : "";
+  } catch {
+    return "";
+  }
+}
+
+function mediaName(source = "") {
+  const name = source.split("/").pop()?.split("?")[0] || "untitled upload";
+  return decodeURIComponent(name).replace(/^\d+-[\da-f-]+-/, "");
+}
+
+function storedMedia(projects = data.projects) {
+  const known = new Map();
+  projects.forEach(project => {
+    const sources = [project.image, ...projectImages(project).map(item => item.src)].filter(Boolean);
+    sources.forEach(src => {
+      if (!known.has(src)) known.set(src, { src, path: storagePathFromUrl(src), type: mediaKind(src), projects: [] });
+      if (!known.get(src).projects.includes(project.title)) known.get(src).projects.push(project.title);
+    });
+  });
+  return [...known.values()];
 }
 
 function richText(value = "") {
@@ -181,7 +214,7 @@ function home() {
   const writing = data.projects.filter(project => project.category === "writing").slice(0, 3);
   const design = data.projects.filter(project => project.category === "projects").slice(0, 3);
   const writingRows = writing.length ? writing.map(project => `<a class="writing-row" href="#writing/${project.id}"><span class="type">${escapeHtml(project.medium || "")}</span><h3>${escapeHtml(project.title)}</h3><i data-lucide="arrow-up-right"></i></a>`).join("") : emptyShelf();
-  return `<section class="hero"><div><h1><em>welcome.</em></h1><p class="intro">Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)</p></div><div class="hero-art"><img src="assets/graphics/portfolio-graphic.svg?v=20260820-10" alt="" /></div><div class="hero-bottom"><span>scroll to explore my mind</span><span>student / artist / writer / designer <i data-lucide="arrow-down"></i></span></div></section><div class="marquee"><div class="marquee-track">${marqueeContent()}</div></div>${homeSection("01 / pieces that challenge me in every way", "fine art", "#fine-art", "see all work →", art.map(card).join("") || emptyShelf())}${homeSection("02 / shower & regular thoughts alike", "writing", "#writing", "read more →", writingRows)}${homeSection("03 / projects with clients", "design", "#projects", "see design work →", design.map(card).join("") || emptyShelf(), "design-preview")}<section class="about"><h2><em>nice to meet you, i’m tiona</em></h2><div class="about-copy"><p>${aboutText()}</p>${socialLinks()}</div></section>`;
+  return `<section class="hero"><div><h1><em>welcome.</em></h1><p class="intro">Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)</p></div><div class="hero-art"><img src="assets/graphics/portfolio-graphic.svg?v=20260820-11" alt="" /></div><div class="hero-bottom"><span>scroll to explore my mind</span><span>student / artist / writer / designer <i data-lucide="arrow-down"></i></span></div></section>${homeSection("01 / pieces that challenge me in every way", "fine art", "#fine-art", "see all work →", art.map(card).join("") || emptyShelf())}${homeSection("02 / shower & regular thoughts alike", "writing", "#writing", "read more →", writingRows)}${homeSection("03 / projects with clients", "design", "#projects", "see design work →", design.map(card).join("") || emptyShelf(), "design-preview")}<section class="about"><h2><em>nice to meet you, i’m tiona</em></h2><div class="about-copy"><p>${aboutText()}</p>${socialLinks()}</div></section>`;
 }
 
 function listing(category) {
@@ -231,7 +264,7 @@ function renderPublic() {
   const page = ["home", "fine-art", "writing", "projects"].includes(category) ? category : "home";
   const project = id && data.projects.find(item => item.id === id);
   app.classList.remove("page-enter"); void app.offsetWidth;
-  app.innerHTML = id ? detail(page, id) : page === "home" ? home() : listing(page);
+  app.innerHTML = `${id ? detail(page, id) : page === "home" ? home() : listing(page)}<div class="marquee marquee-bottom"><div class="marquee-track">${marqueeContent()}</div></div>`;
   if (project) renderGallery(project);
   if (page === "home") loadReading();
   app.classList.add("page-enter");
@@ -257,6 +290,46 @@ function renderProjectList() {
   createIcons();
 }
 
+function mediaPreview(item) {
+  if (item.type === "video") return `<span class="media-library-icon"><i data-lucide="video"></i></span>`;
+  if (item.type === "pdf") return `<span class="media-library-icon"><i data-lucide="file-text"></i></span>`;
+  return `<img src="${escapeHtml(item.src)}" alt="" loading="lazy" />`;
+}
+
+function renderMediaLibrary() {
+  const library = document.querySelector("#media-library");
+  if (!library) return;
+  const linked = storedMedia();
+  const all = new Map([...linked, ...mediaLibrary.map(item => [item.src, item])]);
+  const items = [...all.values()].map(item => ({ ...item, projects: item.projects || linked.find(linkedItem => linkedItem.src === item.src)?.projects || [] }));
+  const folders = [
+    ["images", "image"],
+    ["videos", "video"],
+    ["PDFs", "pdf"]
+  ];
+  library.innerHTML = folders.map(([title, type]) => {
+    const folderItems = items.filter(item => item.type === type);
+    return `<section class="media-folder"><div class="media-folder-heading"><h4>${title}</h4><span>${folderItems.length}</span></div>${folderItems.length ? `<div class="media-grid">${folderItems.map(item => `<article class="media-item"><div class="media-thumb">${mediaPreview(item)}</div><p title="${escapeHtml(mediaName(item.src))}">${escapeHtml(mediaName(item.src))}</p><small>${item.projects.length ? `used in ${escapeHtml(item.projects.join(", "))}` : "not used in a project"}</small><button class="text-button media-delete" type="button" data-delete-media="${escapeHtml(item.src)}">delete file</button></article>`).join("")}</div>` : `<p class="empty">No ${title.toLowerCase()} uploaded yet.</p>`}</section>`;
+  }).join("");
+  createIcons();
+}
+
+async function refreshMediaLibrary() {
+  mediaLibrary = storedMedia();
+  renderMediaLibrary();
+  if (!sb || !currentUser || mediaLibraryLoaded) return;
+  const { data: files, error } = await sb.storage.from(MEDIA_BUCKET).list(currentUser.id, { limit: 1000, sortBy: { column: "created_at", order: "desc" } });
+  if (error) return;
+  mediaLibraryLoaded = true;
+  mediaLibrary = files.filter(file => file.name && file.name !== ".emptyFolderPlaceholder").map(file => {
+    const path = `${currentUser.id}/${file.name}`;
+    const { data: publicUrl } = sb.storage.from(MEDIA_BUCKET).getPublicUrl(path);
+    const src = publicUrl.publicUrl;
+    return { src, path, type: mediaKind(file.name), projects: storedMedia().find(item => item.src === src)?.projects || [] };
+  });
+  renderMediaLibrary();
+}
+
 function openProjectForm(id = "") {
   editingId = id || null;
   const form = document.querySelector("#project-form");
@@ -266,7 +339,6 @@ function openProjectForm(id = "") {
   document.querySelector(".delete-project").style.visibility = project ? "visible" : "hidden";
   if (project) {
     Object.entries(project).forEach(([key, value]) => { if (form.elements[key]) form.elements[key].value = value; });
-    form.elements.galleryCaptions.value = projectImages(project).map(image => image.caption || "").join("\n");
   }
   renderGalleryOrder(project);
   form.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -277,14 +349,15 @@ function renderGalleryOrder(project) {
   if (!order) return;
   const items = project ? projectImages(project) : [];
   order.innerHTML = items.length
-    ? `<p class="eyebrow">gallery order</p>${items.map((item, index) => `<div class="gallery-order-item"><span>${index + 1}. ${escapeHtml(item.src.split("/").pop().split("?")[0] || "media")}</span><span><button class="text-button" type="button" data-move-gallery="${index}" data-direction="-1" ${index === 0 ? "disabled" : ""}>move up</button><button class="text-button" type="button" data-move-gallery="${index}" data-direction="1" ${index === items.length - 1 ? "disabled" : ""}>move down</button></span></div>`).join("")}`
+    ? `<p class="eyebrow">gallery files</p>${items.map((item, index) => `<div class="gallery-order-item"><div class="gallery-order-preview">${mediaPreview(item)}</div><div class="gallery-order-copy"><span>${index + 1}. ${escapeHtml(mediaName(item.src))}</span><label>caption <div class="format-tools"><button class="text-button" type="button" data-format-for="galleryCaption${index}" data-format="bold"><strong>B</strong> bold</button><button class="text-button" type="button" data-format-for="galleryCaption${index}" data-format="italic"><em>I</em> italic</button></div><input name="galleryCaption${index}" data-gallery-caption="${index}" value="${escapeHtml(item.caption || "")}" placeholder="Optional caption" /></label></div><div class="gallery-order-actions"><button class="text-button" type="button" data-move-gallery="${index}" data-direction="-1" ${index === 0 ? "disabled" : ""}>move up</button><button class="text-button" type="button" data-move-gallery="${index}" data-direction="1" ${index === items.length - 1 ? "disabled" : ""}>move down</button><button class="text-button" type="button" data-remove-gallery="${index}">remove</button></div></div>`).join("")}`
     : "";
+  createIcons();
 }
 
 function setupEditor() {
   if (!modal) return;
   modal.showModal(); modal.append(cursor);
-  populateEditor(); renderProjectList();
+  populateEditor(); renderProjectList(); refreshMediaLibrary();
   document.addEventListener("click", handleEditorClick);
   document.querySelector("#project-form").addEventListener("submit", saveProject);
   document.querySelector("#studio-name").addEventListener("input", event => { data.studioName = event.target.value || defaults.studioName; saveLocalArchive(); });
@@ -418,6 +491,7 @@ async function handleEditorClick(event) {
   const moveGallery = target.closest("[data-move-gallery]");
   if (moveGallery && editingId) {
     const project = data.projects.find(item => item.id === editingId);
+    syncGalleryCaptions(project);
     const items = projectImages(project);
     const from = Number(moveGallery.dataset.moveGallery);
     const to = from + Number(moveGallery.dataset.direction);
@@ -430,11 +504,31 @@ async function handleEditorClick(event) {
       catch (error) { showFormNotice(document.querySelector("#project-form"), error.message || "Unable to reorder the gallery."); }
     }
   }
+  const removeGallery = target.closest("[data-remove-gallery]");
+  if (removeGallery && editingId) {
+    const project = data.projects.find(item => item.id === editingId);
+    syncGalleryCaptions(project);
+    const item = projectImages(project)[Number(removeGallery.dataset.removeGallery)];
+    if (item && confirm(`Remove ${mediaName(item.src)} from this project? The file will remain in your media library.`)) {
+      project.gallery = projectImages(project).filter((_, index) => index !== Number(removeGallery.dataset.removeGallery));
+      project.images = project.gallery.map(image => image.src);
+      if (project.image === item.src) project.image = project.gallery.find(image => image.type === "image")?.src || "";
+      try { await saveArchive(); openProjectForm(editingId); renderMediaLibrary(); }
+      catch (error) { showFormNotice(document.querySelector("#project-form"), error.message || "Unable to remove this file."); }
+    }
+  }
+  const deleteMedia = target.closest("[data-delete-media]");
+  if (deleteMedia) await deleteMediaFile(deleteMedia.dataset.deleteMedia);
   const tab = target.closest(".editor-tab");
-  if (tab) { document.querySelectorAll(".editor-tab, .tab-panel").forEach(element => element.classList.remove("active")); tab.classList.add("active"); document.querySelector(`#${tab.dataset.tab}-tab`).classList.add("active"); }
+  if (tab) {
+    document.querySelectorAll(".editor-tab, .tab-panel").forEach(element => element.classList.remove("active"));
+    tab.classList.add("active"); document.querySelector(`#${tab.dataset.tab}-tab`).classList.add("active");
+    if (tab.dataset.tab === "media") refreshMediaLibrary();
+  }
   if (target.closest(".delete-project") && editingId) {
+    if (!confirm("Delete this project? Its uploaded files will stay in your media library.")) return;
     data.projects = data.projects.filter(project => project.id !== editingId);
-    try { await saveArchive(); document.querySelector("#project-form").classList.add("hidden"); renderProjectList(); }
+    try { await saveArchive(); document.querySelector("#project-form").classList.add("hidden"); renderProjectList(); renderMediaLibrary(); }
     catch (error) { showFormNotice(document.querySelector("#project-form"), error.message || "Unable to delete this project."); }
   }
   if (target.closest(".save-about")) {
@@ -449,6 +543,38 @@ async function handleEditorClick(event) {
     const download = document.createElement("a");
     download.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
     download.download = "tiona-zeng-archive.json"; download.click(); URL.revokeObjectURL(download.href);
+  }
+}
+
+function syncGalleryCaptions(project) {
+  if (!project) return;
+  const captions = [...document.querySelectorAll("[data-gallery-caption]")];
+  if (!captions.length) return;
+  project.gallery = projectImages(project).map((item, index) => ({ ...item, caption: captions.find(field => Number(field.dataset.galleryCaption) === index)?.value || "" }));
+  project.images = project.gallery.map(item => item.src);
+}
+
+async function deleteMediaFile(source) {
+  const path = storagePathFromUrl(source);
+  const library = document.querySelector("#media-library");
+  if (!path) {
+    showFormNotice(library, "Only files uploaded through this editor can be deleted here.");
+    return;
+  }
+  if (!confirm(`Delete ${mediaName(source)} everywhere? This permanently removes the file from your storage and every project using it.`)) return;
+  try {
+    const { error } = await sb.storage.from(MEDIA_BUCKET).remove([path]);
+    if (error) throw error;
+    data.projects.forEach(project => {
+      project.gallery = projectImages(project).filter(item => item.src !== source);
+      project.images = project.gallery.map(item => item.src);
+      if (project.image === source) project.image = project.gallery.find(item => item.type === "image")?.src || "";
+    });
+    mediaLibrary = mediaLibrary.filter(item => item.src !== source);
+    await saveArchive(); renderProjectList(); renderMediaLibrary();
+    showFormNotice(library, "file deleted from your media library.", "success");
+  } catch (error) {
+    showFormNotice(library, error.message || "Unable to delete this file.");
   }
 }
 
@@ -494,7 +620,7 @@ async function saveProject(event) {
   event.preventDefault();
   const form = event.currentTarget;
   try {
-    const files = [...pendingMediaFiles, ...form.elements.galleryFiles.files];
+    const files = [...pendingMediaFiles];
     const values = Object.fromEntries(new FormData(form));
     const existing = data.projects.find(project => project.id === values.id);
     const uploads = [];
@@ -509,17 +635,19 @@ async function saveProject(event) {
     const urls = values.galleryUrls.split(/\n|,/).map(url => url.trim()).filter(Boolean);
     const previous = existing ? projectImages(existing) : [];
     const sources = [...new Set([...previous.map(image => image.src), ...urls, ...uploads])];
-    const captions = values.galleryCaptions.split("\n");
-    delete values.galleryFiles; delete values.galleryUrls; delete values.galleryCaptions;
+    const captions = [...form.querySelectorAll("[data-gallery-caption]")].reduce((all, field) => ({ ...all, [Number(field.dataset.galleryCaption)]: field.value }), {});
+    delete values.galleryFiles; delete values.galleryUrls;
+    Object.keys(values).filter(key => key.startsWith("galleryCaption")).forEach(key => delete values[key]);
     values.id = values.id || `${values.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${Date.now().toString().slice(-4)}`;
-    values.gallery = sources.map((src, index) => ({ src, type: isPdfSource(src) ? "pdf" : isVideoSource(src) ? "video" : "image", caption: captions[index] || previous.find(image => image.src === src)?.caption || "" }));
+    values.gallery = sources.map((src, index) => ({ src, type: mediaKind(src), caption: captions[index] ?? previous.find(image => image.src === src)?.caption ?? "" }));
     values.images = sources;
     values.image = values.image || sources.find(source => !isVideoSource(source) && !isPdfSource(source)) || existing?.image || "";
     values.color = existing?.color || ["#f2d591", "#d6ddec", "#d9c6e8", "#c3d8bd"][data.projects.length % 4];
     const index = data.projects.findIndex(project => project.id === values.id);
     if (index >= 0) data.projects[index] = values; else data.projects.unshift(values);
-    await saveArchive(); editingId = values.id; clearAttachedMedia(); renderProjectList();
-    showFormNotice(form, existing ? "project updated — preview it on the site or keep editing." : "project saved — preview it on the site or keep editing.", "success");
+    await saveArchive(); editingId = values.id; clearAttachedMedia(); renderProjectList(); renderMediaLibrary();
+    openProjectForm(values.id);
+    showFormNotice(document.querySelector("#project-form"), existing ? "project updated — preview it on the site or keep editing." : "project saved — preview it on the site or keep editing.", "success");
   } catch (error) {
     const message = error.message || "That file could not be uploaded. Try again or use a public media URL.";
     showFormNotice(form, message);
@@ -539,6 +667,13 @@ function setupCursor() {
   document.addEventListener("pointerover", event => cursor.classList.toggle("is-hovering", Boolean(event.target.closest("a, button, input, select, textarea, label"))));
 }
 
+function setupHaptics() {
+  document.addEventListener("click", event => {
+    if (!event.target.closest("button, .button")) return;
+    navigator.vibrate?.(8);
+  });
+}
+
 function setupAnnotations() {
   document.addEventListener("click", event => { const annotation = event.target.closest(".annotation"); if (!annotation) return; document.querySelectorAll(".annotation.open").forEach(item => { if (item !== annotation) item.classList.remove("open"); }); annotation.classList.toggle("open"); });
 }
@@ -546,7 +681,7 @@ function setupAnnotations() {
 async function startApp() {
   try { await hydrateArchive(); }
   catch (error) { console.warn("Unable to load the hosted archive:", error); }
-  applyTheme(); setupCursor();
+  applyTheme(); setupCursor(); setupHaptics();
   if (isAdmin) {
     if (!sb) { renderEditorGate("The hosted editor connection is missing."); return; }
     await preparePasswordRecovery();
