@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="../favicon.svg?v=20260820-1" type="image/svg+xml" />
     <title>Tiona Zeng — Studio editor</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,7 +15,7 @@
   <body class="admin-page">
     <div class="grain"></div>
     <div class="cursor-orb" aria-hidden="true"></div>
-    <main id="app" aria-hidden="true"></main>
+    <main id="app"></main>
     <dialog id="editor-modal">
       <div class="editor-shell">
         <aside class="editor-sidebar">
@@ -74,6 +75,8 @@
       </div>
     </dialog>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="../app.js?v=20260820-7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="../supabase-config.js?v=20260820-1"></script>
+    <script src="../app.js?v=20260820-13"></script>
   </body>
 </html>
