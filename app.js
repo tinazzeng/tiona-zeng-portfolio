@@ -1,7 +1,7 @@
 /* The public site and its editor use one small browser-only archive. */
 const STORAGE_KEY = "tiona-portfolio";
 const LEGACY_STORAGE_KEY = "moss-archive";
-const isAdmin = location.pathname.replace(/\/+$/, "").endsWith("/admin");
+const isAdmin = ["/admin", "/applepie"].includes(location.pathname.replace(/\/+$/, ""));
 const app = document.querySelector("#app");
 const modal = document.querySelector("#editor-modal");
 const cursor = document.querySelector(".cursor-orb");
