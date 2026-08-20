@@ -26,13 +26,20 @@
 }
 
 ::selection {
-  background: rgb(242 213 145 / 62%);
+  background: rgba(242, 213, 145, 0.55);
+  color: var(--ink);
+}
+
+.about ::selection,
+.marquee ::selection,
+.editor-sidebar ::selection {
+  background: rgba(255, 255, 255, 0.62);
   color: var(--ink);
 }
 
 .hero h1 em::selection,
 .wordmark span::selection {
-  background: rgb(49 36 33 / 72%);
+  background: rgba(49, 36, 33, 0.72);
   color: var(--accent);
 }
 
