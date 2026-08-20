@@ -850,6 +850,75 @@ button:active,
   padding: 0;
 }
 
+/* Writing is deliberately set like a reading list, not a card grid. */
+.writing-list {
+  border-top: 1px solid var(--ink);
+}
+
+.writing-page .writing-row,
+.home-sections .writing-row {
+  grid-template-columns: minmax(110px, .45fr) minmax(0, 2fr) minmax(50px, .25fr) auto;
+  min-height: 136px;
+  padding-block: clamp(1.5rem, 3vw, 3rem);
+}
+
+.writing-page .writing-row h3 {
+  max-width: 22ch;
+}
+
+.writing-year {
+  font: 13px var(--mono);
+  text-align: right;
+}
+
+.pdf-figure {
+  flex-basis: min(88vw, 1100px) !important;
+}
+
+.pdf-embed {
+  background: #fff;
+  border: 1px solid var(--ink);
+  display: block;
+  height: min(78vh, 900px);
+  width: 100%;
+}
+
+.pdf-fallback {
+  display: inline-block;
+  margin-top: 10px;
+}
+
+@media (max-width: 700px) {
+  .writing-page .writing-row,
+  .home-sections .writing-row {
+    grid-template-columns: 1fr auto;
+    min-height: 0;
+  }
+
+  .writing-page .writing-row .type,
+  .home-sections .writing-row .type {
+    grid-column: 1;
+  }
+
+  .writing-page .writing-row h3,
+  .home-sections .writing-row h3 {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .writing-year {
+    display: none;
+  }
+
+  .pdf-figure {
+    flex-basis: 100% !important;
+  }
+
+  .pdf-embed {
+    height: 70vh;
+  }
+}
+
 @media (max-width: 700px) {
   footer {
     gap: 12px;

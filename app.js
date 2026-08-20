@@ -213,14 +213,21 @@ function home() {
   const art = data.projects.filter(project => project.category === "fine-art").slice(0, 3);
   const writing = data.projects.filter(project => project.category === "writing").slice(0, 3);
   const design = data.projects.filter(project => project.category === "projects").slice(0, 3);
-  const writingRows = writing.length ? writing.map(project => `<a class="writing-row" href="#writing/${project.id}"><span class="type">${escapeHtml(project.medium || "")}</span><h3>${escapeHtml(project.title)}</h3><i data-lucide="arrow-up-right"></i></a>`).join("") : emptyShelf();
+  const writingRows = writing.length ? writing.map(writingRow).join("") : emptyShelf();
   return `<section class="hero"><div><h1><em>welcome.</em></h1><p class="intro">Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)</p></div><div class="hero-art"><img src="assets/graphics/portfolio-graphic.svg?v=20260820-12" alt="" /></div><div class="hero-bottom"><span>scroll to explore my mind</span><span>student / artist / writer / designer <i data-lucide="arrow-down"></i></span></div></section>${homeSection("01 / pieces that challenge me in every way", "fine art", "#fine-art", "see all work →", art.map(card).join("") || emptyShelf())}${homeSection("02 / shower & regular thoughts alike", "writing", "#writing", "read more →", writingRows)}${homeSection("03 / projects with clients", "design", "#projects", "see design work →", design.map(card).join("") || emptyShelf(), "design-preview")}<section class="about"><h2><em>nice to meet you, i’m tiona</em></h2><div class="about-copy"><p>${aboutText()}</p>${socialLinks()}</div></section>`;
+}
+
+function writingRow(project) {
+  return `<a class="writing-row" href="#writing/${project.id}"><span class="type">${escapeHtml(project.medium || "writing")}</span><h3>${escapeHtml(project.title)}</h3><span class="writing-year">${escapeHtml(project.year || "")}</span><i data-lucide="arrow-up-right"></i></a>`;
 }
 
 function listing(category) {
   const title = { "fine-art": "Fine<br />art", writing: "Creative<br />writing", projects: "Design<br />work" }[category];
   const projects = data.projects.filter(project => project.category === category);
-  return `<section class="page"><div class="page-head"><h1>${title}</h1><p>${listingCopy[category]}</p></div><div class="project-grid">${projects.length ? projects.map(card).join("") : emptyShelf()}</div></section>`;
+  const content = category === "writing"
+    ? `<div class="writing-list">${projects.length ? projects.map(writingRow).join("") : emptyShelf()}</div>`
+    : `<div class="project-grid">${projects.length ? projects.map(card).join("") : emptyShelf()}</div>`;
+  return `<section class="page ${category === "writing" ? "writing-page" : ""}"><div class="page-head"><h1>${title}</h1><p>${listingCopy[category]}</p></div>${content}</section>`;
 }
 
 function detail(category, id) {
@@ -240,7 +247,7 @@ function renderGallery(project) {
   if (!images.length) return;
   const gallery = document.createElement("section");
   gallery.className = "detail-gallery";
-  gallery.innerHTML = images.map(image => `<figure>${image.type === "video" ? `<video controls preload="metadata" src="${escapeHtml(image.src)}"></video>` : image.type === "pdf" ? `<a class="pdf-attachment" href="${escapeHtml(image.src)}" target="_blank" rel="noreferrer"><i data-lucide="file-text"></i> open PDF</a>` : `<img src="${escapeHtml(image.src)}" alt="Additional image from ${escapeHtml(project.title)}" loading="lazy" />`}${image.caption ? `<figcaption>${richText(image.caption)}</figcaption>` : ""}</figure>`).join("");
+  gallery.innerHTML = images.map(image => `<figure class="${image.type === "pdf" ? "pdf-figure" : ""}">${image.type === "video" ? `<video controls preload="metadata" src="${escapeHtml(image.src)}"></video>` : image.type === "pdf" ? `<iframe class="pdf-embed" src="${escapeHtml(image.src)}#view=FitH" title="${escapeHtml(project.title)} PDF" loading="lazy"></iframe><a class="pdf-fallback" href="${escapeHtml(image.src)}" target="_blank" rel="noreferrer">open PDF in a new tab ↗</a>` : `<img src="${escapeHtml(image.src)}" alt="Additional image from ${escapeHtml(project.title)}" loading="lazy" />`}${image.caption ? `<figcaption>${richText(image.caption)}</figcaption>` : ""}</figure>`).join("");
   app.querySelector(".detail-image")?.after(gallery);
 }
 
@@ -334,7 +341,10 @@ function openProjectForm(id = "") {
   editingId = id || null;
   const form = document.querySelector("#project-form");
   const project = data.projects.find(item => item.id === id);
-  form.reset(); clearAttachedMedia(); form.classList.remove("hidden");
+  form.reset();
+  form.elements.id.value = "";
+  form.elements.id.defaultValue = "";
+  clearAttachedMedia(); form.classList.remove("hidden");
   document.querySelector("#form-title").textContent = project ? "edit project" : "new project";
   document.querySelector(".delete-project").style.visibility = project ? "visible" : "hidden";
   if (project) {
@@ -479,7 +489,7 @@ async function handleEditorClick(event) {
   const target = event.target;
   if (target.closest(".close-editor")) location.href = "../";
   if (target.closest(".add-project")) openProjectForm();
-  if (target.closest(".cancel-edit")) document.querySelector("#project-form").classList.add("hidden");
+  if (target.closest(".cancel-edit, .collapse-edit")) document.querySelector("#project-form").classList.add("hidden");
   const edit = target.closest("[data-edit]"); if (edit) openProjectForm(edit.dataset.edit);
   if (target.closest(".preview-project")) {
     const project = data.projects.find(item => item.id === editingId);
@@ -638,7 +648,8 @@ async function saveProject(event) {
     const captions = [...form.querySelectorAll("[data-gallery-caption]")].reduce((all, field) => ({ ...all, [Number(field.dataset.galleryCaption)]: field.value }), {});
     delete values.galleryFiles; delete values.galleryUrls;
     Object.keys(values).filter(key => key.startsWith("galleryCaption")).forEach(key => delete values[key]);
-    values.id = values.id || `${values.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${Date.now().toString().slice(-4)}`;
+    const slug = values.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "project";
+    values.id = values.id || `${slug}-${crypto.randomUUID().slice(0, 8)}`;
     values.gallery = sources.map((src, index) => ({ src, type: mediaKind(src), caption: captions[index] ?? previous.find(image => image.src === src)?.caption ?? "" }));
     values.images = sources;
     values.image = values.image || sources.find(source => !isVideoSource(source) && !isPdfSource(source)) || existing?.image || "";
