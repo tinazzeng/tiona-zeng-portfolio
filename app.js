@@ -64,8 +64,15 @@ function externalUrl(value = "") {
   return url && !/^https?:\/\//i.test(url) ? `https://${url.replace(/^\/+/, "")}` : url;
 }
 
+function isVideoSource(source = "") {
+  return /^data:video\//i.test(source) || /\.mp4(?:[?#].*)?$/i.test(source);
+}
+
 function projectImages(project) {
-  return (project.gallery || project.images || []).map(item => typeof item === "string" ? { src: item, caption: "" } : item);
+  return (project.gallery || project.images || []).map(item => {
+    const media = typeof item === "string" ? { src: item, caption: "" } : item;
+    return { ...media, type: media.type || (isVideoSource(media.src) ? "video" : "image") };
+  });
 }
 
 function saveArchive() {
@@ -118,7 +125,7 @@ function home() {
   const writing = data.projects.filter(project => project.category === "writing").slice(0, 3);
   const design = data.projects.filter(project => project.category === "projects").slice(0, 3);
   const writingRows = writing.length ? writing.map(project => `<a class="writing-row" href="#writing/${project.id}"><span class="type">${escapeHtml(project.medium || "Writing")}</span><h3>${escapeHtml(project.title)}</h3><i data-lucide="arrow-up-right"></i></a>`).join("") : emptyShelf();
-  return `<section class="hero"><div><h1><em>welcome.</em></h1><p class="intro">Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)</p></div><div class="hero-art"><img src="assets/graphics/portfolio-graphic.svg?v=20260820-4" alt="" /></div><div class="hero-bottom"><span>scroll to explore my mind</span><span>student / artist / writer / designer <i data-lucide="arrow-down"></i></span></div></section><div class="marquee"><div class="marquee-track">${marqueeContent()}</div></div>${homeSection("01 / pieces that challenge me in every way", "fine art", "#fine-art", "see all work →", art.map(card).join("") || emptyShelf())}${homeSection("02 / shower & regular thoughts alike", "writing", "#writing", "read more →", writingRows)}${homeSection("03 / projects with clients", "design", "#projects", "see design work →", design.map(card).join("") || emptyShelf(), "design-preview")}<section class="about"><h2><em>nice to meet you, i’m tiona</em></h2><div class="about-copy"><p>${aboutText()}</p>${socialLinks()}</div></section>`;
+  return `<section class="hero"><div><h1><em>welcome.</em></h1><p class="intro">Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)</p></div><div class="hero-art"><img src="assets/graphics/portfolio-graphic.svg?v=20260820-6" alt="" /></div><div class="hero-bottom"><span>scroll to explore my mind</span><span>student / artist / writer / designer <i data-lucide="arrow-down"></i></span></div></section><div class="marquee"><div class="marquee-track">${marqueeContent()}</div></div>${homeSection("01 / pieces that challenge me in every way", "fine art", "#fine-art", "see all work →", art.map(card).join("") || emptyShelf())}${homeSection("02 / shower & regular thoughts alike", "writing", "#writing", "read more →", writingRows)}${homeSection("03 / projects with clients", "design", "#projects", "see design work →", design.map(card).join("") || emptyShelf(), "design-preview")}<section class="about"><h2><em>nice to meet you, i’m tiona</em></h2><div class="about-copy"><p>${aboutText()}</p>${socialLinks()}</div></section>`;
 }
 
 function listing(category) {
@@ -139,7 +146,7 @@ function renderGallery(project) {
   if (!images.length) return;
   const gallery = document.createElement("section");
   gallery.className = "detail-gallery";
-  gallery.innerHTML = images.map(image => `<figure><img src="${escapeHtml(image.src)}" alt="Additional image from ${escapeHtml(project.title)}" loading="lazy" />${image.caption ? `<figcaption>${escapeHtml(image.caption)}</figcaption>` : ""}</figure>`).join("");
+  gallery.innerHTML = images.map(image => `<figure>${image.type === "video" ? `<video controls preload="metadata" src="${escapeHtml(image.src)}"></video>` : `<img src="${escapeHtml(image.src)}" alt="Additional image from ${escapeHtml(project.title)}" loading="lazy" />`}${image.caption ? `<figcaption>${escapeHtml(image.caption)}</figcaption>` : ""}</figure>`).join("");
   app.querySelector(".detail-image")?.after(gallery);
 }
 
@@ -220,6 +227,11 @@ function handleEditorClick(event) {
   if (target.closest(".add-project")) openProjectForm();
   if (target.closest(".cancel-edit")) document.querySelector("#project-form").classList.add("hidden");
   const edit = target.closest("[data-edit]"); if (edit) openProjectForm(edit.dataset.edit);
+  if (target.closest(".preview-project")) {
+    const project = data.projects.find(item => item.id === editingId);
+    if (!project) showFormNotice(document.querySelector("#project-form"), "Save the project once before previewing it.");
+    else window.open(`../#${project.category}/${project.id}`, "_blank", "noopener");
+  }
   const tab = target.closest(".editor-tab");
   if (tab) { document.querySelectorAll(".editor-tab, .tab-panel").forEach(element => element.classList.remove("active")); tab.classList.add("active"); document.querySelector(`#${tab.dataset.tab}-tab`).classList.add("active"); }
   if (target.closest(".delete-project") && editingId) { data.projects = data.projects.filter(project => project.id !== editingId); saveArchive(); document.querySelector("#project-form").classList.add("hidden"); renderProjectList(); }
@@ -237,28 +249,42 @@ function handleEditorClick(event) {
   }
 }
 
-function readImage(file) {
+function readMedia(file) {
   return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
+}
+
+function showFormNotice(form, message, type = "error") {
+  form.querySelector(".form-notice")?.remove();
+  form.querySelector(".form-actions").insertAdjacentHTML("beforebegin", `<p class="form-notice ${type}" role="status">${escapeHtml(message)}</p>`);
 }
 
 async function saveProject(event) {
   event.preventDefault();
   const form = event.currentTarget;
-  const values = Object.fromEntries(new FormData(form));
-  const existing = data.projects.find(project => project.id === values.id);
-  const uploads = await Promise.all([...form.elements.galleryFiles.files].slice(0, 8).map(readImage));
-  const urls = values.galleryUrls.split(/\n|,/).map(url => url.trim()).filter(Boolean);
-  const previous = existing ? projectImages(existing) : [];
-  const sources = [...new Set([...previous.map(image => image.src), ...urls, ...uploads])].slice(0, 8);
-  const captions = values.galleryCaptions.split("\n");
-  delete values.galleryFiles; delete values.galleryUrls; delete values.galleryCaptions;
-  values.id = values.id || `${values.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${Date.now().toString().slice(-4)}`;
-  values.gallery = sources.map((src, index) => ({ src, caption: captions[index] || previous.find(image => image.src === src)?.caption || "" }));
-  values.images = sources; values.image = values.image || sources[0] || existing?.image || "";
-  values.color = existing?.color || ["#f2d591", "#d6ddec", "#d9c6e8", "#c3d8bd"][data.projects.length % 4];
-  const index = data.projects.findIndex(project => project.id === values.id);
-  if (index >= 0) data.projects[index] = values; else data.projects.unshift(values);
-  saveArchive(); form.classList.add("hidden"); renderProjectList();
+  try {
+    const files = [...form.elements.galleryFiles.files].slice(0, 8);
+    const totalBytes = files.reduce((total, file) => total + file.size, 0);
+    if (totalBytes > 3 * 1024 * 1024) throw new Error("Choose up to 3 MB of gallery media at a time. For larger videos, use a public MP4 URL.");
+    const values = Object.fromEntries(new FormData(form));
+    const existing = data.projects.find(project => project.id === values.id);
+    const uploads = await Promise.all(files.map(readMedia));
+    const urls = values.galleryUrls.split(/\n|,/).map(url => url.trim()).filter(Boolean);
+    const previous = existing ? projectImages(existing) : [];
+    const sources = [...new Set([...previous.map(image => image.src), ...urls, ...uploads])].slice(0, 8);
+    const captions = values.galleryCaptions.split("\n");
+    delete values.galleryFiles; delete values.galleryUrls; delete values.galleryCaptions;
+    values.id = values.id || `${values.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${Date.now().toString().slice(-4)}`;
+    values.gallery = sources.map((src, index) => ({ src, type: isVideoSource(src) ? "video" : "image", caption: captions[index] || previous.find(image => image.src === src)?.caption || "" }));
+    values.images = sources;
+    values.image = values.image || sources.find(source => !isVideoSource(source)) || existing?.image || "";
+    values.color = existing?.color || ["#f2d591", "#d6ddec", "#d9c6e8", "#c3d8bd"][data.projects.length % 4];
+    const index = data.projects.findIndex(project => project.id === values.id);
+    if (index >= 0) data.projects[index] = values; else data.projects.unshift(values);
+    saveArchive(); editingId = values.id; renderProjectList();
+    showFormNotice(form, existing ? "project updated — preview it on the site or keep editing." : "project saved — preview it on the site or keep editing.", "success");
+  } catch (error) {
+    showFormNotice(form, error.message || "That file could not be read. Try a smaller image or a public media URL.");
+  }
 }
 
 function uploadFont(event) {

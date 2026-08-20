@@ -95,7 +95,8 @@ button {
   margin: 0 4vw 7vw;
 }
 
-.detail-gallery img {
+.detail-gallery img,
+.detail-gallery video {
   display: block;
   width: 100%;
   min-height: 360px;
@@ -103,7 +104,8 @@ button {
   background: var(--accent);
 }
 
-.detail-gallery img:nth-child(3n) {
+.detail-gallery img:nth-child(3n),
+.detail-gallery video:nth-child(3n) {
   grid-column: span 2;
   min-height: 560px;
 }
@@ -116,11 +118,13 @@ button {
   grid-column: span 2;
 }
 
-.detail-gallery figure img {
+.detail-gallery figure img,
+.detail-gallery figure video {
   min-height: 360px;
 }
 
-.detail-gallery figure:nth-child(3n) img {
+.detail-gallery figure:nth-child(3n) img,
+.detail-gallery figure:nth-child(3n) video {
   min-height: 560px;
 }
 
@@ -137,9 +141,13 @@ button {
   }
 
   .detail-gallery img,
+  .detail-gallery video,
   .detail-gallery img:nth-child(3n),
+  .detail-gallery video:nth-child(3n),
   .detail-gallery figure img,
-  .detail-gallery figure:nth-child(3n) img {
+  .detail-gallery figure video,
+  .detail-gallery figure:nth-child(3n) img,
+  .detail-gallery figure:nth-child(3n) video {
     grid-column: auto;
     min-height: 280px;
   }
@@ -163,7 +171,7 @@ button {
 
 .about-copy > p {
   margin: 0;
-  font: 500 clamp(1.4rem, 2.2vw, 2.4rem)/1 var(--display);
+  font: 500 clamp(1.2rem, 1.9vw, 2rem)/1.22 var(--display);
   letter-spacing: -0.01em;
 }
 
@@ -350,6 +358,16 @@ footer a svg {
 .editor-bottom .text-button svg {
   display: block;
   flex: 0 0 auto;
+}
+
+.form-notice {
+  margin: 16px 0 0;
+  color: var(--ink);
+  font: 13px/1.35 var(--mono);
+}
+
+.form-notice.success {
+  color: var(--ink);
 }
 
 .marquee-track {
