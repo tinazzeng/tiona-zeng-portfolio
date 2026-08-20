@@ -74,13 +74,26 @@ button {
 }
 
 .hero-art {
+  aspect-ratio: 167.17 / 199.63;
+  max-width: 100%;
   transform: none;
 }
 
 .hero-art img {
   display: block;
+  max-width: 100%;
   width: 100%;
   height: auto;
+}
+
+.hero {
+  overflow: visible;
+}
+
+@media (max-width: 700px) {
+  .hero-art {
+    width: min(200px, calc(100vw - 40px));
+  }
 }
 
 .hero .intro {
@@ -99,15 +112,14 @@ button {
 .detail-gallery video {
   display: block;
   width: 100%;
-  min-height: 360px;
-  object-fit: cover;
-  background: var(--accent);
+  height: auto;
+  min-height: 0;
+  object-fit: contain;
 }
 
 .detail-gallery img:nth-child(3n),
 .detail-gallery video:nth-child(3n) {
   grid-column: span 2;
-  min-height: 560px;
 }
 
 .detail-gallery figure {
@@ -120,12 +132,12 @@ button {
 
 .detail-gallery figure img,
 .detail-gallery figure video {
-  min-height: 360px;
+  min-height: 0;
 }
 
 .detail-gallery figure:nth-child(3n) img,
 .detail-gallery figure:nth-child(3n) video {
-  min-height: 560px;
+  min-height: 0;
 }
 
 .detail-gallery figcaption {
@@ -149,12 +161,32 @@ button {
   .detail-gallery figure:nth-child(3n) img,
   .detail-gallery figure:nth-child(3n) video {
     grid-column: auto;
-    min-height: 280px;
+    min-height: 0;
   }
 
   .detail-gallery figure:nth-child(3n) {
     grid-column: auto;
   }
+}
+
+.card-image {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.detail-image {
+  height: auto;
+  min-height: 0;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.detail-image img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .about {
@@ -502,4 +534,13 @@ a[target="_blank"] {
 .attached-files:not(:empty) {
   color: var(--ink);
   font-family: var(--mono);
+}
+
+.editor-password {
+  border-top: 1px solid rgba(49, 36, 33, .24);
+  display: grid;
+  gap: 12px;
+  margin-top: 38px;
+  max-width: 620px;
+  padding-top: 24px;
 }

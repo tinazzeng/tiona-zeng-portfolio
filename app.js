@@ -179,11 +179,13 @@ function listing(category) {
 function detail(category, id) {
   const project = data.projects.find(item => item.id === id);
   if (!project) return listing(category);
-  const imageStyle = project.image ? `background-image:url(&quot;${escapeHtml(project.image)}&quot;)` : `background:${escapeHtml(project.color || "#f2d591")}`;
+  const cover = project.image
+    ? `<figure class="detail-image"><img src="${escapeHtml(project.image)}" alt="${escapeHtml(project.title)}" /></figure>`
+    : `<div class="detail-image" style="background:${escapeHtml(project.color || "#f2d591")}"></div>`;
   const meta = [project.year, project.medium].filter(Boolean).map(value => `<span>${escapeHtml(value)}</span>`).join("");
   const credits = project.credits ? `<h3>credits</h3><p>${escapeHtml(project.credits)}</p>` : "";
   const notes = project.notes ? `<h3>process notes</h3><p>${escapeHtml(project.notes)}</p>` : "";
-  return `<article class="detail"><a class="back" href="#${category}"><i data-lucide="arrow-left"></i> back to ${labels[category]}</a><div class="detail-head"><h1>${escapeHtml(project.title)}</h1><div class="detail-meta">${meta}</div></div><div class="detail-image" style="${imageStyle}"></div><div class="detail-copy">${project.description ? `<p>${escapeHtml(project.description)}</p>` : ""}<div>${credits}${notes}${project.link ? `<a href="${escapeHtml(externalUrl(project.link))}" target="_blank" rel="noreferrer">visit external link ↗</a>` : ""}</div></div></article>`;
+  return `<article class="detail"><a class="back" href="#${category}"><i data-lucide="arrow-left"></i> back to ${labels[category]}</a><div class="detail-head"><h1>${escapeHtml(project.title)}</h1><div class="detail-meta">${meta}</div></div>${cover}<div class="detail-copy">${project.description ? `<p>${escapeHtml(project.description)}</p>` : ""}<div>${credits}${notes}${project.link ? `<a href="${escapeHtml(externalUrl(project.link))}" target="_blank" rel="noreferrer">visit external link ↗</a>` : ""}</div></div></article>`;
 }
 
 function renderGallery(project) {
@@ -265,6 +267,7 @@ function setupEditor() {
   document.querySelector("#accent-color").addEventListener("input", event => { data.accent = event.target.value; saveLocalArchive(); });
   document.querySelector("#font-upload").addEventListener("change", uploadFont);
   document.querySelector("#gallery-upload").addEventListener("change", showAttachedMedia);
+  document.querySelector("#editor-password")?.addEventListener("submit", changeEditorPassword);
 }
 
 function showAttachedMedia(event) {
@@ -298,14 +301,34 @@ async function finishPasswordRecovery(event) {
   renderEditorGate("Password updated. Sign in with your new password.");
 }
 
+async function changeEditorPassword(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const values = Object.fromEntries(new FormData(form));
+  const notice = form.querySelector(".form-notice");
+  if (values.password !== values.confirmPassword) { notice.textContent = "Those passwords do not match."; return; }
+  const { error } = await sb.auth.updateUser({ password: values.password });
+  if (error) { notice.textContent = error.message; return; }
+  await sb.auth.signOut();
+  modal?.close();
+  app.innerHTML = "";
+  renderEditorGate("Password updated. Sign in with your new password.");
+}
+
 async function requestPasswordReset(event) {
   const form = event.currentTarget.closest("form");
   const email = form.elements.email.value.trim();
   const notice = form.querySelector(".form-notice");
   if (!email) { notice.textContent = "Enter your email first, then choose forgot password."; return; }
   notice.textContent = "Sending reset link…";
-  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: "https://tiona.studio/applepie/" });
-  notice.textContent = error ? error.message : "Reset link sent. Check your email, then open the newest link.";
+  const resetRequest = sb.auth.resetPasswordForEmail(email, { redirectTo: "https://tiona.studio/applepie/" });
+  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("The email service did not respond. Try again later or change your password after signing in.")), 10000));
+  try {
+    const { error } = await Promise.race([resetRequest, timeout]);
+    notice.textContent = error ? error.message : "Reset link sent. Check your email, then open the newest link.";
+  } catch (error) {
+    notice.textContent = error.message;
+  }
 }
 
 async function preparePasswordRecovery() {
@@ -405,14 +428,14 @@ async function saveProject(event) {
   event.preventDefault();
   const form = event.currentTarget;
   try {
-    const files = [...form.elements.galleryFiles.files].slice(0, 8);
+    const files = [...form.elements.galleryFiles.files];
     const values = Object.fromEntries(new FormData(form));
     const existing = data.projects.find(project => project.id === values.id);
     showFormNotice(form, files.length ? "Uploading media…" : "Saving project…", "success");
     const uploads = await Promise.all(files.map(uploadMedia));
     const urls = values.galleryUrls.split(/\n|,/).map(url => url.trim()).filter(Boolean);
     const previous = existing ? projectImages(existing) : [];
-    const sources = [...new Set([...previous.map(image => image.src), ...urls, ...uploads])].slice(0, 8);
+    const sources = [...new Set([...previous.map(image => image.src), ...urls, ...uploads])];
     const captions = values.galleryCaptions.split("\n");
     delete values.galleryFiles; delete values.galleryUrls; delete values.galleryCaptions;
     values.id = values.id || `${values.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${Date.now().toString().slice(-4)}`;
