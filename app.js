@@ -14,7 +14,10 @@ const sb = window.supabase && supabaseConfig.url && supabaseConfig.publishableKe
 let editingId = null;
 let currentUser = null;
 let archiveOwner = null;
-let isRecoveringPassword = location.hash.includes("type=recovery");
+const recoveryHash = new URLSearchParams(location.hash.slice(1));
+const recoveryQuery = new URLSearchParams(location.search);
+let isRecoveringPassword = recoveryHash.get("type") === "recovery" || recoveryQuery.has("code");
+let recoveryLinkError = "";
 
 const defaults = {
   studioName: "Tiona Zeng",
@@ -272,8 +275,9 @@ function showAttachedMedia(event) {
 }
 
 function renderEditorGate(message = "Sign in to manage your portfolio.") {
-  app.innerHTML = `<section class="editor-auth"><p class="eyebrow">YOUR BACKSTAGE</p><h1>studio<br /><em>editor</em></h1><p>${escapeHtml(message)}</p><form id="editor-login"><label>Email<input name="email" type="email" autocomplete="email" required /></label><label>Password<input name="password" type="password" autocomplete="current-password" required /></label><button class="button dark" type="submit">sign in</button><p class="form-notice" aria-live="polite"></p></form></section>`;
+  app.innerHTML = `<section class="editor-auth"><p class="eyebrow">YOUR BACKSTAGE</p><h1>studio<br /><em>editor</em></h1><p>${escapeHtml(message)}</p><form id="editor-login"><label>Email<input name="email" type="email" autocomplete="email" required /></label><label>Password<input name="password" type="password" autocomplete="current-password" required /></label><button class="button dark" type="submit">sign in</button><button class="text-button request-reset" type="button">forgot password?</button><p class="form-notice" aria-live="polite"></p></form></section>`;
   document.querySelector("#editor-login")?.addEventListener("submit", signInEditor);
+  document.querySelector(".request-reset")?.addEventListener("click", requestPasswordReset);
 }
 
 function renderPasswordRecovery() {
@@ -292,6 +296,28 @@ async function finishPasswordRecovery(event) {
   await sb.auth.signOut();
   history.replaceState({}, "", location.pathname);
   renderEditorGate("Password updated. Sign in with your new password.");
+}
+
+async function requestPasswordReset(event) {
+  const form = event.currentTarget.closest("form");
+  const email = form.elements.email.value.trim();
+  const notice = form.querySelector(".form-notice");
+  if (!email) { notice.textContent = "Enter your email first, then choose forgot password."; return; }
+  notice.textContent = "Sending reset link…";
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: "https://tiona.studio/applepie/" });
+  notice.textContent = error ? error.message : "Reset link sent. Check your email, then open the newest link.";
+}
+
+async function preparePasswordRecovery() {
+  const code = recoveryQuery.get("code");
+  if (!code || !sb) return;
+  const { error } = await sb.auth.exchangeCodeForSession(code);
+  if (error) {
+    isRecoveringPassword = false;
+    recoveryLinkError = "This reset link is invalid or expired. Request a new one below.";
+    return;
+  }
+  history.replaceState({}, "", `${location.pathname}#type=recovery`);
 }
 
 async function signInEditor(event) {
@@ -427,10 +453,11 @@ async function startApp() {
   applyTheme(); setupCursor();
   if (isAdmin) {
     if (!sb) { renderEditorGate("The hosted editor connection is missing."); return; }
+    await preparePasswordRecovery();
     if (isRecoveringPassword) { renderPasswordRecovery(); return; }
     const { data: auth } = await sb.auth.getUser();
     currentUser = auth.user;
-    if (!currentUser) { renderEditorGate(); return; }
+    if (!currentUser) { renderEditorGate(recoveryLinkError || undefined); return; }
     if (archiveOwner && archiveOwner !== currentUser.id) { renderEditorGate("This editor belongs to a different account."); return; }
     setupEditor();
     return;
