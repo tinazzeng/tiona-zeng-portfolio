@@ -81,11 +81,22 @@ function isVideoSource(source = "") {
   return /^data:video\//i.test(source) || /\.mp4(?:[?#].*)?$/i.test(source);
 }
 
+function isPdfSource(source = "") {
+  return /^data:application\/pdf/i.test(source) || /\.pdf(?:[?#].*)?$/i.test(source);
+}
+
 function projectImages(project) {
   return (project.gallery || project.images || []).map(item => {
     const media = typeof item === "string" ? { src: item, caption: "" } : item;
-    return { ...media, type: media.type || (isVideoSource(media.src) ? "video" : "image") };
+    return { ...media, type: media.type || (isPdfSource(media.src) ? "pdf" : isVideoSource(media.src) ? "video" : "image") };
   });
+}
+
+function richText(value = "") {
+  return escapeHtml(value)
+    .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>")
+    .replace(/\n/g, "<br />");
 }
 
 function saveLocalArchive() {
@@ -187,7 +198,7 @@ function detail(category, id) {
     : `<div class="detail-image" style="background:${escapeHtml(project.color || "#f2d591")}"></div>`;
   const meta = [project.year, project.medium].filter(Boolean).map(value => `<span>${escapeHtml(value)}</span>`).join("");
   const credits = project.credits ? `<h3>credits</h3><p>${escapeHtml(project.credits)}</p>` : "";
-  const notes = project.notes ? `<h3>process notes</h3><p>${escapeHtml(project.notes)}</p>` : "";
+  const notes = project.notes ? `<h3>more information</h3><p>${richText(project.notes)}</p>` : "";
   return `<article class="detail"><a class="back" href="#${category}"><i data-lucide="arrow-left"></i> back to ${labels[category]}</a><div class="detail-head"><h1>${escapeHtml(project.title)}</h1><div class="detail-meta">${meta}</div></div>${cover}<div class="detail-copy">${project.description ? `<p>${escapeHtml(project.description)}</p>` : ""}<div>${credits}${notes}${project.link ? `<a href="${escapeHtml(externalUrl(project.link))}" target="_blank" rel="noreferrer">visit external link ↗</a>` : ""}</div></div></article>`;
 }
 
@@ -196,7 +207,7 @@ function renderGallery(project) {
   if (!images.length) return;
   const gallery = document.createElement("section");
   gallery.className = "detail-gallery";
-  gallery.innerHTML = images.map(image => `<figure>${image.type === "video" ? `<video controls preload="metadata" src="${escapeHtml(image.src)}"></video>` : `<img src="${escapeHtml(image.src)}" alt="Additional image from ${escapeHtml(project.title)}" loading="lazy" />`}${image.caption ? `<figcaption>${escapeHtml(image.caption)}</figcaption>` : ""}</figure>`).join("");
+  gallery.innerHTML = images.map(image => `<figure>${image.type === "video" ? `<video controls preload="metadata" src="${escapeHtml(image.src)}"></video>` : image.type === "pdf" ? `<a class="pdf-attachment" href="${escapeHtml(image.src)}" target="_blank" rel="noreferrer"><i data-lucide="file-text"></i> open PDF</a>` : `<img src="${escapeHtml(image.src)}" alt="Additional image from ${escapeHtml(project.title)}" loading="lazy" />`}${image.caption ? `<figcaption>${richText(image.caption)}</figcaption>` : ""}</figure>`).join("");
   app.querySelector(".detail-image")?.after(gallery);
 }
 
@@ -257,7 +268,17 @@ function openProjectForm(id = "") {
     Object.entries(project).forEach(([key, value]) => { if (form.elements[key]) form.elements[key].value = value; });
     form.elements.galleryCaptions.value = projectImages(project).map(image => image.caption || "").join("\n");
   }
+  renderGalleryOrder(project);
   form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderGalleryOrder(project) {
+  const order = document.querySelector("#gallery-order");
+  if (!order) return;
+  const items = project ? projectImages(project) : [];
+  order.innerHTML = items.length
+    ? `<p class="eyebrow">gallery order</p>${items.map((item, index) => `<div class="gallery-order-item"><span>${index + 1}. ${escapeHtml(item.src.split("/").pop().split("?")[0] || "media")}</span><span><button class="text-button" type="button" data-move-gallery="${index}" data-direction="-1" ${index === 0 ? "disabled" : ""}>move up</button><button class="text-button" type="button" data-move-gallery="${index}" data-direction="1" ${index === items.length - 1 ? "disabled" : ""}>move down</button></span></div>`).join("")
+    : "";
 }
 
 function setupEditor() {
@@ -392,6 +413,23 @@ async function handleEditorClick(event) {
     if (!project) showFormNotice(document.querySelector("#project-form"), "Save the project once before previewing it.");
     else window.open(`../#${project.category}/${project.id}`, "_blank", "noopener");
   }
+  const formatter = target.closest("[data-format]");
+  if (formatter) formatText(formatter.dataset.formatFor, formatter.dataset.format);
+  const moveGallery = target.closest("[data-move-gallery]");
+  if (moveGallery && editingId) {
+    const project = data.projects.find(item => item.id === editingId);
+    const items = projectImages(project);
+    const from = Number(moveGallery.dataset.moveGallery);
+    const to = from + Number(moveGallery.dataset.direction);
+    if (items[to]) {
+      [items[from], items[to]] = [items[to], items[from]];
+      project.gallery = items;
+      project.images = items.map(item => item.src);
+      project.image = items.find(item => item.type === "image")?.src || "";
+      try { await saveArchive(); openProjectForm(editingId); }
+      catch (error) { showFormNotice(document.querySelector("#project-form"), error.message || "Unable to reorder the gallery."); }
+    }
+  }
   const tab = target.closest(".editor-tab");
   if (tab) { document.querySelectorAll(".editor-tab, .tab-panel").forEach(element => element.classList.remove("active")); tab.classList.add("active"); document.querySelector(`#${tab.dataset.tab}-tab`).classList.add("active"); }
   if (target.closest(".delete-project") && editingId) {
@@ -412,6 +450,19 @@ async function handleEditorClick(event) {
     download.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
     download.download = "tiona-zeng-archive.json"; download.click(); URL.revokeObjectURL(download.href);
   }
+}
+
+function formatText(fieldName, format) {
+  const field = document.querySelector(`[name="${fieldName}"]`);
+  if (!field) return;
+  const marker = format === "bold" ? "**" : "*";
+  const start = field.selectionStart;
+  const end = field.selectionEnd;
+  const selected = field.value.slice(start, end);
+  field.value = `${field.value.slice(0, start)}${marker}${selected}${marker}${field.value.slice(end)}`;
+  const cursor = selected ? end + marker.length * 2 : start + marker.length;
+  field.focus();
+  field.setSelectionRange(cursor, cursor);
 }
 
 function showFormNotice(form, message, type = "error") {
@@ -461,9 +512,9 @@ async function saveProject(event) {
     const captions = values.galleryCaptions.split("\n");
     delete values.galleryFiles; delete values.galleryUrls; delete values.galleryCaptions;
     values.id = values.id || `${values.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${Date.now().toString().slice(-4)}`;
-    values.gallery = sources.map((src, index) => ({ src, type: isVideoSource(src) ? "video" : "image", caption: captions[index] || previous.find(image => image.src === src)?.caption || "" }));
+    values.gallery = sources.map((src, index) => ({ src, type: isPdfSource(src) ? "pdf" : isVideoSource(src) ? "video" : "image", caption: captions[index] || previous.find(image => image.src === src)?.caption || "" }));
     values.images = sources;
-    values.image = values.image || sources.find(source => !isVideoSource(source)) || existing?.image || "";
+    values.image = values.image || sources.find(source => !isVideoSource(source) && !isPdfSource(source)) || existing?.image || "";
     values.color = existing?.color || ["#f2d591", "#d6ddec", "#d9c6e8", "#c3d8bd"][data.projects.length % 4];
     const index = data.projects.findIndex(project => project.id === values.id);
     if (index >= 0) data.projects[index] = values; else data.projects.unshift(values);

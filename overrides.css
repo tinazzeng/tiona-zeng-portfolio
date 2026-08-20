@@ -599,3 +599,65 @@ a[target="_blank"] {
   max-width: none;
   margin-top: 12px;
 }
+
+.format-tools {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.format-tools .text-button {
+  padding: 0;
+}
+
+.gallery-order {
+  display: grid;
+  gap: 6px;
+  margin: 18px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+}
+
+.gallery-order .eyebrow {
+  margin-bottom: 4px;
+}
+
+.gallery-order-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  font: 12px var(--mono);
+}
+
+.gallery-order-item > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gallery-order-item > span:last-child {
+  display: flex;
+  gap: 9px;
+  flex: 0 0 auto;
+}
+
+.gallery-order .text-button:disabled {
+  opacity: .35;
+  text-decoration: none;
+}
+
+.pdf-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 150px;
+  padding: 24px;
+  border: 1px solid var(--ink);
+  background: #fff;
+  color: var(--ink);
+  font: 13px var(--mono);
+  text-decoration: underline;
+  text-transform: uppercase;
+}
