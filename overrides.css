@@ -491,3 +491,15 @@ a[target="_blank"] {
 .editor-auth form {
   max-width: 380px;
 }
+
+.card-title,
+.writing-row h3,
+.detail-head h1,
+.project-item b {
+  text-transform: none;
+}
+
+.attached-files:not(:empty) {
+  color: var(--ink);
+  font-family: var(--mono);
+}

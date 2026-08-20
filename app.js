@@ -162,8 +162,8 @@ function home() {
   const art = data.projects.filter(project => project.category === "fine-art").slice(0, 3);
   const writing = data.projects.filter(project => project.category === "writing").slice(0, 3);
   const design = data.projects.filter(project => project.category === "projects").slice(0, 3);
-  const writingRows = writing.length ? writing.map(project => `<a class="writing-row" href="#writing/${project.id}"><span class="type">${escapeHtml(project.medium || "Writing")}</span><h3>${escapeHtml(project.title)}</h3><i data-lucide="arrow-up-right"></i></a>`).join("") : emptyShelf();
-  return `<section class="hero"><div><h1><em>welcome.</em></h1><p class="intro">Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)</p></div><div class="hero-art"><img src="assets/graphics/portfolio-graphic.svg?v=20260820-8" alt="" /></div><div class="hero-bottom"><span>scroll to explore my mind</span><span>student / artist / writer / designer <i data-lucide="arrow-down"></i></span></div></section><div class="marquee"><div class="marquee-track">${marqueeContent()}</div></div>${homeSection("01 / pieces that challenge me in every way", "fine art", "#fine-art", "see all work →", art.map(card).join("") || emptyShelf())}${homeSection("02 / shower & regular thoughts alike", "writing", "#writing", "read more →", writingRows)}${homeSection("03 / projects with clients", "design", "#projects", "see design work →", design.map(card).join("") || emptyShelf(), "design-preview")}<section class="about"><h2><em>nice to meet you, i’m tiona</em></h2><div class="about-copy"><p>${aboutText()}</p>${socialLinks()}</div></section>`;
+  const writingRows = writing.length ? writing.map(project => `<a class="writing-row" href="#writing/${project.id}"><span class="type">${escapeHtml(project.medium || "")}</span><h3>${escapeHtml(project.title)}</h3><i data-lucide="arrow-up-right"></i></a>`).join("") : emptyShelf();
+  return `<section class="hero"><div><h1><em>welcome.</em></h1><p class="intro">Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)</p></div><div class="hero-art"><img src="assets/graphics/portfolio-graphic.svg?v=20260820-9" alt="" /></div><div class="hero-bottom"><span>scroll to explore my mind</span><span>student / artist / writer / designer <i data-lucide="arrow-down"></i></span></div></section><div class="marquee"><div class="marquee-track">${marqueeContent()}</div></div>${homeSection("01 / pieces that challenge me in every way", "fine art", "#fine-art", "see all work →", art.map(card).join("") || emptyShelf())}${homeSection("02 / shower & regular thoughts alike", "writing", "#writing", "read more →", writingRows)}${homeSection("03 / projects with clients", "design", "#projects", "see design work →", design.map(card).join("") || emptyShelf(), "design-preview")}<section class="about"><h2><em>nice to meet you, i’m tiona</em></h2><div class="about-copy"><p>${aboutText()}</p>${socialLinks()}</div></section>`;
 }
 
 function listing(category) {
@@ -176,7 +176,10 @@ function detail(category, id) {
   const project = data.projects.find(item => item.id === id);
   if (!project) return listing(category);
   const imageStyle = project.image ? `background-image:url(&quot;${escapeHtml(project.image)}&quot;)` : `background:${escapeHtml(project.color || "#f2d591")}`;
-  return `<article class="detail"><a class="back" href="#${category}"><i data-lucide="arrow-left"></i> back to ${labels[category]}</a><div class="detail-head"><h1>${escapeHtml(project.title)}</h1><div class="detail-meta"><span>${escapeHtml(project.year)}</span><span>${escapeHtml(project.medium || "Mixed media")}</span></div></div><div class="detail-image" style="${imageStyle}"></div><div class="detail-copy"><p>${escapeHtml(project.description || "A work in progress.")}</p><div><h3>credits</h3><p>${escapeHtml(project.credits || "—")}</p><h3>process notes</h3><p>${escapeHtml(project.notes || "Notes coming soon.")}</p>${project.link ? `<a href="${escapeHtml(externalUrl(project.link))}" target="_blank" rel="noreferrer">visit external link ↗</a>` : ""}</div></div></article>`;
+  const meta = [project.year, project.medium].filter(Boolean).map(value => `<span>${escapeHtml(value)}</span>`).join("");
+  const credits = project.credits ? `<h3>credits</h3><p>${escapeHtml(project.credits)}</p>` : "";
+  const notes = project.notes ? `<h3>process notes</h3><p>${escapeHtml(project.notes)}</p>` : "";
+  return `<article class="detail"><a class="back" href="#${category}"><i data-lucide="arrow-left"></i> back to ${labels[category]}</a><div class="detail-head"><h1>${escapeHtml(project.title)}</h1><div class="detail-meta">${meta}</div></div><div class="detail-image" style="${imageStyle}"></div><div class="detail-copy">${project.description ? `<p>${escapeHtml(project.description)}</p>` : ""}<div>${credits}${notes}${project.link ? `<a href="${escapeHtml(externalUrl(project.link))}" target="_blank" rel="noreferrer">visit external link ↗</a>` : ""}</div></div></article>`;
 }
 
 function renderGallery(project) {
@@ -257,6 +260,14 @@ function setupEditor() {
   document.querySelector("#studio-name").addEventListener("input", event => { data.studioName = event.target.value || defaults.studioName; saveLocalArchive(); });
   document.querySelector("#accent-color").addEventListener("input", event => { data.accent = event.target.value; saveLocalArchive(); });
   document.querySelector("#font-upload").addEventListener("change", uploadFont);
+  document.querySelector("#gallery-upload").addEventListener("change", showAttachedMedia);
+}
+
+function showAttachedMedia(event) {
+  const display = document.querySelector("#gallery-file-names");
+  if (!display) return;
+  const names = [...event.target.files].map(file => file.name);
+  display.textContent = names.length ? `attached: ${names.join(", ")}` : "";
 }
 
 function renderEditorGate(message = "Sign in to manage your portfolio.") {
