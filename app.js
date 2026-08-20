@@ -125,7 +125,7 @@ function home() {
   const writing = data.projects.filter(project => project.category === "writing").slice(0, 3);
   const design = data.projects.filter(project => project.category === "projects").slice(0, 3);
   const writingRows = writing.length ? writing.map(project => `<a class="writing-row" href="#writing/${project.id}"><span class="type">${escapeHtml(project.medium || "Writing")}</span><h3>${escapeHtml(project.title)}</h3><i data-lucide="arrow-up-right"></i></a>`).join("") : emptyShelf();
-  return `<section class="hero"><div><h1><em>welcome.</em></h1><p class="intro">Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)</p></div><div class="hero-art"><img src="assets/graphics/portfolio-graphic.svg?v=20260820-6" alt="" /></div><div class="hero-bottom"><span>scroll to explore my mind</span><span>student / artist / writer / designer <i data-lucide="arrow-down"></i></span></div></section><div class="marquee"><div class="marquee-track">${marqueeContent()}</div></div>${homeSection("01 / pieces that challenge me in every way", "fine art", "#fine-art", "see all work →", art.map(card).join("") || emptyShelf())}${homeSection("02 / shower & regular thoughts alike", "writing", "#writing", "read more →", writingRows)}${homeSection("03 / projects with clients", "design", "#projects", "see design work →", design.map(card).join("") || emptyShelf(), "design-preview")}<section class="about"><h2><em>nice to meet you, i’m tiona</em></h2><div class="about-copy"><p>${aboutText()}</p>${socialLinks()}</div></section>`;
+  return `<section class="hero"><div><h1><em>welcome.</em></h1><p class="intro">Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)</p></div><div class="hero-art"><img src="assets/graphics/portfolio-graphic.svg?v=20260820-7" alt="" /></div><div class="hero-bottom"><span>scroll to explore my mind</span><span>student / artist / writer / designer <i data-lucide="arrow-down"></i></span></div></section><div class="marquee"><div class="marquee-track">${marqueeContent()}</div></div>${homeSection("01 / pieces that challenge me in every way", "fine art", "#fine-art", "see all work →", art.map(card).join("") || emptyShelf())}${homeSection("02 / shower & regular thoughts alike", "writing", "#writing", "read more →", writingRows)}${homeSection("03 / projects with clients", "design", "#projects", "see design work →", design.map(card).join("") || emptyShelf(), "design-preview")}<section class="about"><h2><em>nice to meet you, i’m tiona</em></h2><div class="about-copy"><p>${aboutText()}</p>${socialLinks()}</div></section>`;
 }
 
 function listing(category) {
@@ -263,8 +263,6 @@ async function saveProject(event) {
   const form = event.currentTarget;
   try {
     const files = [...form.elements.galleryFiles.files].slice(0, 8);
-    const totalBytes = files.reduce((total, file) => total + file.size, 0);
-    if (totalBytes > 3 * 1024 * 1024) throw new Error("Choose up to 3 MB of gallery media at a time. For larger videos, use a public MP4 URL.");
     const values = Object.fromEntries(new FormData(form));
     const existing = data.projects.find(project => project.id === values.id);
     const uploads = await Promise.all(files.map(readMedia));
@@ -283,7 +281,10 @@ async function saveProject(event) {
     saveArchive(); editingId = values.id; renderProjectList();
     showFormNotice(form, existing ? "project updated — preview it on the site or keep editing." : "project saved — preview it on the site or keep editing.", "success");
   } catch (error) {
-    showFormNotice(form, error.message || "That file could not be read. Try a smaller image or a public media URL.");
+    const message = error.name === "QuotaExceededError"
+      ? "Your browser has run out of local storage for media. Use a public MP4 URL or remove an older upload, then try again."
+      : error.message || "That file could not be read. Try again or use a public media URL.";
+    showFormNotice(form, message);
   }
 }
 
