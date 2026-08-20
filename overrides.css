@@ -26,13 +26,13 @@
 }
 
 ::selection {
-  background: var(--accent);
+  background: rgb(242 213 145 / 62%);
   color: var(--ink);
 }
 
 .hero h1 em::selection,
 .wordmark span::selection {
-  background: var(--ink);
+  background: rgb(49 36 33 / 72%);
   color: var(--accent);
 }
 
