@@ -277,7 +277,7 @@ function renderGalleryOrder(project) {
   if (!order) return;
   const items = project ? projectImages(project) : [];
   order.innerHTML = items.length
-    ? `<p class="eyebrow">gallery order</p>${items.map((item, index) => `<div class="gallery-order-item"><span>${index + 1}. ${escapeHtml(item.src.split("/").pop().split("?")[0] || "media")}</span><span><button class="text-button" type="button" data-move-gallery="${index}" data-direction="-1" ${index === 0 ? "disabled" : ""}>move up</button><button class="text-button" type="button" data-move-gallery="${index}" data-direction="1" ${index === items.length - 1 ? "disabled" : ""}>move down</button></span></div>`).join("")
+    ? `<p class="eyebrow">gallery order</p>${items.map((item, index) => `<div class="gallery-order-item"><span>${index + 1}. ${escapeHtml(item.src.split("/").pop().split("?")[0] || "media")}</span><span><button class="text-button" type="button" data-move-gallery="${index}" data-direction="-1" ${index === 0 ? "disabled" : ""}>move up</button><button class="text-button" type="button" data-move-gallery="${index}" data-direction="1" ${index === items.length - 1 ? "disabled" : ""}>move down</button></span></div>`).join("")}`
     : "";
 }
 
