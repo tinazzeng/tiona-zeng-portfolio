@@ -91,8 +91,17 @@ button {
 }
 
 @media (max-width: 700px) {
+  .hero {
+    min-height: auto;
+  }
+
   .hero-art {
-    width: min(200px, calc(100vw - 40px));
+    width: min(150px, calc(100vw - 48px));
+    margin: 28px 0 20px auto;
+  }
+
+  .hero-bottom {
+    margin-top: 24px;
   }
 }
 
