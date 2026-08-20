@@ -553,3 +553,49 @@ a[target="_blank"] {
   max-width: 620px;
   padding-top: 24px;
 }
+
+/* Project covers are framed like polaroids: full image, white border, title below. */
+.work-card,
+.project-grid .work-card {
+  display: block;
+  min-height: 0;
+  padding: clamp(12px, 1.5vw, 22px);
+  background: #fff;
+}
+
+.card-image {
+  position: relative;
+  inset: auto;
+  display: block;
+  width: 100%;
+  background: transparent;
+}
+
+.card-image img,
+.card-placeholder {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.card-image img {
+  object-fit: contain;
+}
+
+.card-placeholder {
+  aspect-ratio: 4 / 3;
+}
+
+.card-caption {
+  padding: clamp(15px, 2vw, 28px) clamp(2px, .4vw, 7px) clamp(5px, .6vw, 10px);
+}
+
+.card-meta,
+.card-title {
+  position: static;
+}
+
+.card-title {
+  max-width: none;
+  margin-top: 12px;
+}

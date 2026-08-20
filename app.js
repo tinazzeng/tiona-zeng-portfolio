@@ -14,6 +14,7 @@ const sb = window.supabase && supabaseConfig.url && supabaseConfig.publishableKe
 let editingId = null;
 let currentUser = null;
 let archiveOwner = null;
+let pendingMediaFiles = [];
 const recoveryHash = new URLSearchParams(location.hash.slice(1));
 const recoveryQuery = new URLSearchParams(location.search);
 let isRecoveringPassword = recoveryHash.get("type") === "recovery" || recoveryQuery.has("code");
@@ -133,8 +134,10 @@ function createIcons() { window.lucide?.createIcons(); }
 function emptyShelf() { return '<p class="empty">This shelf is ready for your work.</p>'; }
 
 function card(project) {
-  const imageStyle = project.image ? `background-image:url(&quot;${escapeHtml(project.image)}&quot;)` : `background:${escapeHtml(project.color || "#f2d591")}`;
-  return `<a class="work-card" href="#${project.category}/${project.id}"><div class="card-image" style="${imageStyle}"></div><div class="card-meta"><span>${labels[project.category]}</span><span>${escapeHtml(project.year)}</span></div><h3 class="card-title">${escapeHtml(project.title)}</h3></a>`;
+  const cover = project.image
+    ? `<img src="${escapeHtml(project.image)}" alt="${escapeHtml(project.title)}" loading="lazy" />`
+    : `<span class="card-placeholder" style="background:${escapeHtml(project.color || "#f2d591")}"></span>`;
+  return `<a class="work-card" href="#${project.category}/${project.id}"><div class="card-image">${cover}</div><div class="card-caption"><div class="card-meta"><span>${labels[project.category]}</span><span>${escapeHtml(project.year)}</span></div><h3 class="card-title">${escapeHtml(project.title)}</h3></div></a>`;
 }
 
 function aboutText() {
@@ -247,7 +250,7 @@ function openProjectForm(id = "") {
   editingId = id || null;
   const form = document.querySelector("#project-form");
   const project = data.projects.find(item => item.id === id);
-  form.reset(); form.classList.remove("hidden");
+  form.reset(); clearAttachedMedia(); form.classList.remove("hidden");
   document.querySelector("#form-title").textContent = project ? "edit project" : "new project";
   document.querySelector(".delete-project").style.visibility = project ? "visible" : "hidden";
   if (project) {
@@ -273,8 +276,20 @@ function setupEditor() {
 function showAttachedMedia(event) {
   const display = document.querySelector("#gallery-file-names");
   if (!display) return;
-  const names = [...event.target.files].map(file => file.name);
-  display.textContent = names.length ? `attached: ${names.join(", ")}` : "";
+  const incoming = [...event.target.files];
+  const known = new Set(pendingMediaFiles.map(file => `${file.name}-${file.size}-${file.lastModified}`));
+  pendingMediaFiles.push(...incoming.filter(file => !known.has(`${file.name}-${file.size}-${file.lastModified}`)));
+  event.target.value = "";
+  const names = pendingMediaFiles.map(file => file.name);
+  display.textContent = names.length ? `${names.length} file${names.length === 1 ? "" : "s"} attached: ${names.join(", ")}` : "";
+}
+
+function clearAttachedMedia() {
+  pendingMediaFiles = [];
+  const upload = document.querySelector("#gallery-upload");
+  const display = document.querySelector("#gallery-file-names");
+  if (upload) upload.value = "";
+  if (display) display.textContent = "";
 }
 
 function renderEditorGate(message = "Sign in to manage your portfolio.") {
@@ -428,7 +443,7 @@ async function saveProject(event) {
   event.preventDefault();
   const form = event.currentTarget;
   try {
-    const files = [...form.elements.galleryFiles.files];
+    const files = [...pendingMediaFiles, ...form.elements.galleryFiles.files];
     const values = Object.fromEntries(new FormData(form));
     const existing = data.projects.find(project => project.id === values.id);
     showFormNotice(form, files.length ? "Uploading media…" : "Saving project…", "success");
@@ -445,7 +460,7 @@ async function saveProject(event) {
     values.color = existing?.color || ["#f2d591", "#d6ddec", "#d9c6e8", "#c3d8bd"][data.projects.length % 4];
     const index = data.projects.findIndex(project => project.id === values.id);
     if (index >= 0) data.projects[index] = values; else data.projects.unshift(values);
-    await saveArchive(); editingId = values.id; renderProjectList();
+    await saveArchive(); editingId = values.id; clearAttachedMedia(); renderProjectList();
     showFormNotice(form, existing ? "project updated — preview it on the site or keep editing." : "project saved — preview it on the site or keep editing.", "success");
   } catch (error) {
     const message = error.message || "That file could not be uploaded. Try again or use a public media URL.";
