@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../styles.css" />
-    <link rel="stylesheet" href="../overrides.css?v=20260820-9" />
+    <link rel="stylesheet" href="../overrides.css?v=20260820-10" />
   </head>
   <body class="admin-page">
     <div class="grain"></div>
@@ -22,6 +22,7 @@
           <div><p class="eyebrow">YOUR BACKSTAGE</p><h2>Studio<br /><em>Editor</em></h2></div>
           <div class="editor-tabs" role="tablist">
             <button class="editor-tab active" data-tab="content"><i data-lucide="folder-pen"></i> Projects</button>
+            <button class="editor-tab" data-tab="media"><i data-lucide="images"></i> Media library</button>
             <button class="editor-tab" data-tab="appearance"><i data-lucide="palette"></i> Appearance</button>
             <button class="editor-tab" data-tab="about"><i data-lucide="smile-plus"></i> About you</button>
           </div>
@@ -44,13 +45,17 @@
               <label>Cover image URL<input name="image" placeholder="https://... (optional)" /></label>
               <label class="upload-field">Gallery media <input id="gallery-upload" name="galleryFiles" type="file" accept="image/*,video/mp4,application/pdf,.pdf" multiple /><span><i data-lucide="images"></i> Choose images, PDFs, or MP4s</span><small>Select several files in the picker, or click here again to add more. Your first image becomes the cover.</small><small id="gallery-file-names" class="attached-files" aria-live="polite"></small></label>
               <label>Or add image / PDF / MP4 URLs<textarea name="galleryUrls" rows="3" placeholder="One public media URL per line"></textarea></label>
-              <label>Gallery captions<div class="format-tools" aria-label="Caption formatting"><button class="text-button" type="button" data-format-for="galleryCaptions" data-format="bold"><strong>B</strong> bold</button><button class="text-button" type="button" data-format-for="galleryCaptions" data-format="italic"><em>I</em> italic</button></div><textarea name="galleryCaptions" rows="5" placeholder="One caption per line, in the same order as the gallery images"></textarea><small>Leave a line blank for an image with no caption.</small></label>
-              <div id="gallery-order" class="gallery-order" aria-live="polite"></div>
+              <div id="gallery-order" class="gallery-order" aria-live="polite"><p class="small-copy">After you save, you can reorder files, remove them from this project, and add captions here.</p></div>
               <label>Short description<textarea name="description" rows="3" placeholder="A little introduction to the work."></textarea></label>
               <div class="form-grid"><label>Credits<input name="credits" placeholder="Creative direction, photo..." /></label><label>External link<input name="link" placeholder="https://..." /></label></div>
               <label>More information<div class="format-tools" aria-label="More information formatting"><button class="text-button" type="button" data-format-for="notes" data-format="bold"><strong>B</strong> bold</button><button class="text-button" type="button" data-format-for="notes" data-format="italic"><em>I</em> italic</button></div><textarea name="notes" rows="4" placeholder="What did you notice, make, or learn?"></textarea></label>
               <div class="form-actions"><button class="button dark" type="submit"><i data-lucide="check"></i> Save project</button><button class="text-button preview-project" type="button">Preview on site</button><button class="text-button delete-project" type="button">Delete project</button></div>
             </form>
+          </div>
+          <div id="media-tab" class="tab-panel">
+            <div class="editor-heading"><div><p class="eyebrow">YOUR FILES</p><h3>Media library</h3></div></div>
+            <p class="small-copy">Files are automatically sorted into folders. Deleting a file here permanently removes it from every project that uses it.</p>
+            <div id="media-library" class="media-library" aria-live="polite"></div>
           </div>
           <div id="appearance-tab" class="tab-panel">
             <div class="editor-heading"><div><p class="eyebrow">MAKE IT YOURS</p><h3>Look &amp; feel</h3></div></div>
@@ -85,6 +90,6 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="../supabase-config.js?v=20260820-1"></script>
-    <script src="../app.js?v=20260820-21"></script>
+    <script src="../app.js?v=20260820-23"></script>
   </body>
 </html>
