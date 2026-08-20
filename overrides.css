@@ -850,6 +850,23 @@ button:active,
   padding: 0;
 }
 
+.media-library-message {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  font: 12px/1.4 var(--mono);
+}
+
+.cursor-orb {
+  opacity: 0;
+  transition: opacity .12s ease, background .18s ease;
+  will-change: transform;
+}
+
+.cursor-orb.is-visible {
+  opacity: 1;
+}
+
 /* Writing is deliberately set like a reading list, not a card grid. */
 .writing-list {
   border-top: 1px solid var(--ink);

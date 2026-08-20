@@ -17,6 +17,7 @@ let archiveOwner = null;
 let pendingMediaFiles = [];
 let mediaLibrary = [];
 let mediaLibraryLoaded = false;
+let mediaLibraryMessage = "";
 const recoveryHash = new URLSearchParams(location.hash.slice(1));
 const recoveryQuery = new URLSearchParams(location.search);
 let isRecoveringPassword = recoveryHash.get("type") === "recovery" || recoveryQuery.has("code");
@@ -88,7 +89,8 @@ function isPdfSource(source = "") {
 }
 
 function projectImages(project) {
-  return (project.gallery || project.images || []).map(item => {
+  const items = Array.isArray(project.gallery) && project.gallery.length ? project.gallery : (project.images || []);
+  return items.map(item => {
     const media = typeof item === "string" ? { src: item, caption: "" } : item;
     return { ...media, type: media.type || (isPdfSource(media.src) ? "pdf" : isVideoSource(media.src) ? "video" : "image") };
   });
@@ -314,26 +316,32 @@ function renderMediaLibrary() {
     ["videos", "video"],
     ["PDFs", "pdf"]
   ];
-  library.innerHTML = folders.map(([title, type]) => {
+  library.innerHTML = `${mediaLibraryMessage ? `<p class="media-library-message">${escapeHtml(mediaLibraryMessage)}</p>` : ""}${folders.map(([title, type]) => {
     const folderItems = items.filter(item => item.type === type);
     return `<section class="media-folder"><div class="media-folder-heading"><h4>${title}</h4><span>${folderItems.length}</span></div>${folderItems.length ? `<div class="media-grid">${folderItems.map(item => `<article class="media-item"><div class="media-thumb">${mediaPreview(item)}</div><p title="${escapeHtml(mediaName(item.src))}">${escapeHtml(mediaName(item.src))}</p><small>${item.projects.length ? `used in ${escapeHtml(item.projects.join(", "))}` : "not used in a project"}</small><button class="text-button media-delete" type="button" data-delete-media="${escapeHtml(item.src)}">delete file</button></article>`).join("")}</div>` : `<p class="empty">No ${title.toLowerCase()} uploaded yet.</p>`}</section>`;
-  }).join("");
+  }).join("")}`;
   createIcons();
 }
 
 async function refreshMediaLibrary() {
   mediaLibrary = storedMedia();
+  mediaLibraryMessage = mediaLibrary.length ? "" : "Looking for files in your storage…";
   renderMediaLibrary();
   if (!sb || !currentUser || mediaLibraryLoaded) return;
   const { data: files, error } = await sb.storage.from(MEDIA_BUCKET).list(currentUser.id, { limit: 1000, sortBy: { column: "created_at", order: "desc" } });
-  if (error) return;
+  if (error) {
+    mediaLibraryMessage = "Storage could not be reached right now. Files attached to projects are still shown here.";
+    renderMediaLibrary();
+    return;
+  }
   mediaLibraryLoaded = true;
-  mediaLibrary = files.filter(file => file.name && file.name !== ".emptyFolderPlaceholder").map(file => {
+  mediaLibrary = (files || []).filter(file => file.name && file.name !== ".emptyFolderPlaceholder").map(file => {
     const path = `${currentUser.id}/${file.name}`;
     const { data: publicUrl } = sb.storage.from(MEDIA_BUCKET).getPublicUrl(path);
     const src = publicUrl.publicUrl;
     return { src, path, type: mediaKind(file.name), projects: storedMedia().find(item => item.src === src)?.projects || [] };
   });
+  mediaLibraryMessage = mediaLibrary.length || storedMedia().length ? "" : "No uploads yet. Add files to a project and they’ll appear here automatically.";
   renderMediaLibrary();
 }
 
@@ -674,7 +682,22 @@ function uploadFont(event) {
 
 function setupCursor() {
   if (!cursor) return;
-  window.addEventListener("pointermove", event => { cursor.style.transform = `translate(${event.clientX}px, ${event.clientY}px)`; });
+  let nextFrame = null;
+  let pointerX = -100;
+  let pointerY = -100;
+  const drawCursor = () => {
+    nextFrame = null;
+    cursor.style.transform = `translate3d(${pointerX - 5}px, ${pointerY - 5}px, 0)`;
+  };
+  window.addEventListener("pointermove", event => {
+    pointerX = event.clientX;
+    pointerY = event.clientY;
+    cursor.classList.add("is-visible");
+    if (!nextFrame) nextFrame = requestAnimationFrame(drawCursor);
+  }, { passive: true });
+  window.addEventListener("pointerleave", () => cursor.classList.remove("is-visible"));
+  window.addEventListener("pointerenter", () => cursor.classList.add("is-visible"));
+  window.addEventListener("blur", () => cursor.classList.remove("is-visible"));
   document.addEventListener("pointerover", event => cursor.classList.toggle("is-hovering", Boolean(event.target.closest("a, button, input, select, textarea, label"))));
 }
 
