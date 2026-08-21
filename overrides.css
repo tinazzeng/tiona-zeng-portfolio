@@ -1038,6 +1038,19 @@ button:active,
   width: auto;
 }
 
+/* Give the home illustration a little more presence without crowding its copy. */
+.hero-art {
+  transform: translateY(-34px);
+  width: min(120%, 440px);
+}
+
+@media (max-width: 700px) {
+  .hero-art {
+    transform: translateY(-12px);
+    width: min(190px, calc(100vw - 48px));
+  }
+}
+
 .detail-gallery {
   align-items: center;
   display: grid;
