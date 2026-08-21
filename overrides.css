@@ -8,6 +8,7 @@
 
 :root {
   --display: "Sneaky Times", "Times New Roman", serif;
+  --sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --mono: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
@@ -1128,7 +1129,6 @@ button:active,
   /* The cover and gallery viewport share one image width. The arrows live
      outside that viewport, so they never narrow the work itself. */
   --gallery-width: min(984px, calc(100% - 4vw));
-  --gallery-content-width: calc(var(--gallery-width) - 104px);
   --gallery-height: clamp(250px, 34vw, 420px);
 }
 
@@ -1152,8 +1152,8 @@ button:active,
   height: var(--gallery-height);
   justify-content: center;
   margin: clamp(2rem, 4vw, 4rem) auto;
-  max-width: var(--gallery-content-width);
-  width: var(--gallery-content-width);
+  max-width: 880px;
+  width: calc(100% - 4vw - 104px);
 }
 
 .detail-image img {
@@ -1197,7 +1197,7 @@ button:active,
   align-items: center;
   display: grid;
   gap: 12px;
-  grid-template-columns: 40px minmax(0, var(--gallery-content-width)) 40px;
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
   margin: 0 auto clamp(3.5rem, 6vw, 6rem);
   max-width: var(--gallery-width);
   overflow: visible;
@@ -1221,14 +1221,14 @@ button:active,
 .detail-gallery-track figure {
   align-items: center;
   display: flex;
-  flex: 0 0 var(--gallery-content-width);
+  flex: 0 0 100%;
   flex-direction: column;
   height: var(--gallery-height);
   justify-content: flex-start;
   margin: 0;
-  max-width: var(--gallery-content-width);
+  max-width: 100%;
   scroll-snap-align: start;
-  width: var(--gallery-content-width);
+  width: 100%;
 }
 
 .detail-gallery-track figure:only-child {
@@ -1250,7 +1250,7 @@ button:active,
 }
 
 .detail-gallery-track .pdf-figure {
-  flex-basis: min(88vw, 1100px) !important;
+  flex-basis: 100% !important;
   height: auto;
 }
 
@@ -1280,13 +1280,17 @@ button:active,
 @media (max-width: 700px) {
   :root {
     --gallery-width: calc(100% - 40px);
-    --gallery-content-width: calc(var(--gallery-width) - 80px);
     --gallery-height: min(48vh, 320px);
   }
 
   .detail-gallery {
     gap: 8px;
     grid-template-columns: 32px minmax(0, 1fr) 32px;
+  }
+
+  .detail-image {
+    max-width: var(--gallery-width);
+    width: var(--gallery-width);
   }
 
   .detail-head {
@@ -1383,7 +1387,6 @@ button:active,
 @media (max-width: 700px) {
   :root {
     --gallery-width: calc(100% - 32px);
-    --gallery-content-width: var(--gallery-width);
   }
 
   .site-header {
@@ -1403,7 +1406,8 @@ button:active,
   .nav-link {
     align-items: center;
     display: inline-flex;
-    min-height: 40px;
+    min-height: 44px;
+    padding-inline: 4px;
   }
 
   .hero {
@@ -1443,7 +1447,7 @@ button:active,
   .text-link {
     align-items: center;
     display: inline-flex;
-    min-height: 40px;
+    min-height: 44px;
   }
 
   .feature-grid,
@@ -1764,5 +1768,121 @@ body.viewer-open {
 
   .image-viewer-next {
     right: 16px;
+  }
+}
+
+/* Accessibility and interaction safeguards. */
+body {
+  overflow-x: clip;
+}
+
+.skip-link {
+  background: var(--ink);
+  color: var(--paper);
+  left: 16px;
+  padding: 10px 14px;
+  position: fixed;
+  text-decoration: none;
+  top: 12px;
+  transform: translateY(-160%);
+  transition: transform .2s ease;
+  z-index: 1001;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+:where(a, button, input, textarea, select):focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 4px;
+}
+
+.detail-image img:focus-visible,
+.detail-gallery-track img:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 5px;
+}
+
+.site-header .nav-link[aria-current="page"] {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+button:disabled,
+.button:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+
+.image-viewer {
+  touch-action: pan-y;
+}
+
+@media (max-width: 700px) {
+  .annotation-note {
+    bottom: 20px;
+    left: 20px;
+    max-height: min(45svh, 320px);
+    overflow-y: auto;
+    position: fixed;
+    right: 20px;
+    top: auto;
+    transform: translateY(8px);
+    width: auto;
+  }
+
+  .annotation.open .annotation-note,
+  .annotation:focus-visible .annotation-note {
+    transform: translateY(0);
+  }
+
+  .about-links a {
+    height: 44px;
+    width: 44px;
+  }
+
+  .reading-profile,
+  footer a {
+    align-items: center;
+    display: inline-flex;
+    min-height: 44px;
+  }
+
+  .work-card:hover {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+
+  .marquee-track {
+    transform: none !important;
+  }
+}
+
+@media (pointer: coarse) {
+  body,
+  a,
+  button,
+  input,
+  textarea,
+  select {
+    cursor: auto;
+  }
+
+  .cursor-orb {
+    display: none;
   }
 }

@@ -27,7 +27,7 @@ const defaults = {
   studioName: "Tiona Zeng",
   accent: "#f2d591",
   about: "I’m a student artist making pictures, poems, and playful things for the internet. I’m interested in soft colors, hard feelings, and the little worlds we carry around with us.",
-  email: "hello@example.com",
+  email: "tinazeng16@gmail.com",
   annotations: [
     "student artist | I’m currently studying, experimenting, and building an archive as I go.",
     "soft colors | I keep returning to colors that feel like a memory.",
@@ -83,8 +83,9 @@ function escapeHtml(value = "") {
 }
 
 function externalUrl(value = "") {
-  const url = value.trim();
-  return url && !/^https?:\/\//i.test(url) ? `https://${url.replace(/^\/+/, "")}` : url;
+  const url = String(value || "").trim();
+  if (!url || /^(https?:|mailto:)/i.test(url)) return url;
+  return `https://${url.replace(/^\/+/, "")}`;
 }
 
 function isVideoSource(source = "") {
@@ -96,11 +97,13 @@ function isPdfSource(source = "") {
 }
 
 function projectImages(project) {
-  const items = Array.isArray(project.gallery) && project.gallery.length ? project.gallery : (project.images || []);
+  const items = Array.isArray(project?.gallery) && project.gallery.length
+    ? project.gallery
+    : (Array.isArray(project?.images) ? project.images : []);
   return items.map(item => {
     const media = typeof item === "string" ? { src: item, caption: "" } : item;
     return { ...media, type: media.type || (isPdfSource(media.src) ? "pdf" : isVideoSource(media.src) ? "video" : "image") };
-  });
+  }).filter(media => media?.src);
 }
 
 function mediaKind(source = "") {
@@ -119,7 +122,8 @@ function storagePathFromUrl(source = "") {
 
 function mediaName(source = "") {
   const name = source.split("/").pop()?.split("?")[0] || "untitled upload";
-  return decodeURIComponent(name).replace(/^\d+-[\da-f-]+-/, "");
+  try { return decodeURIComponent(name).replace(/^\d+-[\da-f-]+-/, ""); }
+  catch { return name.replace(/^\d+-[\da-f-]+-/, ""); }
 }
 
 function storedMedia(projects = data.projects) {
@@ -142,7 +146,15 @@ function richText(value = "") {
 }
 
 function saveLocalArchive() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // Large embedded font files can exceed a browser's local-storage quota.
+    const lightweightArchive = { ...data };
+    delete lightweightArchive.font;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(lightweightArchive)); }
+    catch { /* The hosted archive remains the source of truth. */ }
+  }
   applyTheme();
 }
 
@@ -176,9 +188,21 @@ async function saveArchive() {
 
 function applyTheme() {
   document.documentElement.style.setProperty("--accent", data.accent);
-  document.title = `${data.studioName} — ${isAdmin ? "Studio Editor" : "Portfolio"}`;
+  document.title = isAdmin ? "Tiona Zeng — Studio Editor" : "tiona zeng — portfolio";
+  let customFont = document.querySelector("#custom-font");
+  if (data.font) {
+    customFont ||= Object.assign(document.createElement("style"), { id: "custom-font" });
+    customFont.textContent = `@font-face{font-family:StudioCustom;src:url(${data.font})}`;
+    if (!customFont.isConnected) document.head.append(customFont);
+    document.documentElement.style.setProperty("--display", 'StudioCustom, "Sneaky Times", serif');
+  } else {
+    customFont?.remove();
+    document.documentElement.style.setProperty("--display", '"Sneaky Times", "Times New Roman", serif');
+  }
   const wordmark = document.querySelector(".wordmark");
   if (wordmark) wordmark.innerHTML = `${escapeHtml(data.studioName).replace(" ", "<br />")}<span>✶</span>`;
+  const emailLink = document.querySelector('footer a[href^="mailto:"]');
+  if (emailLink && data.email) emailLink.href = `mailto:${data.email.trim()}`;
 }
 
 function createIcons() { window.lucide?.createIcons(); }
@@ -186,7 +210,7 @@ function emptyShelf() { return '<p class="empty">This shelf is ready for your wo
 
 function card(project) {
   const cover = project.image
-    ? `<img src="${escapeHtml(project.image)}" alt="${escapeHtml(project.title)}" loading="lazy" />`
+    ? `<img src="${escapeHtml(project.image)}" alt="${escapeHtml(project.title)}" loading="lazy" decoding="async" />`
     : `<span class="card-placeholder" style="background:${escapeHtml(project.color || "#f2d591")}"></span>`;
   return `<a class="work-card" href="#${project.category}/${project.id}"><div class="card-image">${cover}</div><div class="card-caption"><div class="card-meta"><span>${escapeHtml(project.medium || labels[project.category])}</span><span>${escapeHtml(project.year)}</span></div><h3 class="card-title">${escapeHtml(project.title)}</h3></div></a>`;
 }
@@ -196,7 +220,8 @@ function aboutText() {
   data.annotations.forEach((entry, index) => {
     const [phrase, ...note] = entry.split("|");
     if (!phrase?.trim() || !note.join("|").trim()) return;
-    copy = copy.replace(escapeHtml(phrase.trim()), `<button class="annotation" type="button"><span>${escapeHtml(phrase.trim())}</span><sup>${index + 1}</sup><span class="annotation-note">${escapeHtml(note.join("|").trim())}</span></button>`);
+    const noteId = `annotation-note-${index + 1}`;
+    copy = copy.replace(escapeHtml(phrase.trim()), `<button class="annotation" type="button" aria-expanded="false" aria-controls="${noteId}"><span>${escapeHtml(phrase.trim())}</span><sup>${index + 1}</sup><span class="annotation-note" id="${noteId}">${escapeHtml(note.join("|").trim())}</span></button>`);
   });
   return copy;
 }
@@ -245,7 +270,7 @@ function detail(category, id) {
   const project = data.projects.find(item => item.id === id);
   if (!project) return listing(category);
   const cover = project.image
-    ? `<figure class="detail-image detail-image--cover"><img src="${escapeHtml(project.image)}" alt="${escapeHtml(project.title)}" /></figure>`
+    ? `<figure class="detail-image detail-image--cover"><img src="${escapeHtml(project.image)}" alt="${escapeHtml(project.title)}" decoding="async" role="button" tabindex="0" aria-label="Open ${escapeHtml(project.title)} full screen" /></figure>`
     : `<div class="detail-gallery-anchor" aria-hidden="true"></div>`;
   const meta = [project.year, project.medium].filter(Boolean).map(value => `<span>${escapeHtml(value)}</span>`).join("");
   const credits = project.credits ? `<h3>credits</h3><p>${escapeHtml(project.credits)}</p>` : "";
@@ -254,11 +279,15 @@ function detail(category, id) {
 }
 
 function renderGallery(project) {
-  const images = projectImages(project).filter((image, index) => image.src !== project.image || index > 0);
+  let coverRemoved = false;
+  const images = projectImages(project).filter(image => {
+    if (!coverRemoved && image.src === project.image) { coverRemoved = true; return false; }
+    return true;
+  });
   if (!images.length) return;
   const gallery = document.createElement("section");
   gallery.className = `detail-gallery${images.some(image => image.type === "pdf") ? " has-pdf" : ""}`;
-  const galleryItems = images.map(image => `<figure class="${image.type === "pdf" ? "pdf-figure" : ""}">${image.type === "video" ? `<video controls preload="metadata" src="${escapeHtml(image.src)}"></video>` : image.type === "pdf" ? `<iframe class="pdf-embed" src="${escapeHtml(image.src)}#view=FitH" title="${escapeHtml(project.title)} PDF" loading="lazy"></iframe><a class="pdf-fallback" href="${escapeHtml(image.src)}" target="_blank" rel="noreferrer">open PDF in a new tab ↗</a>` : `<img src="${escapeHtml(image.src)}" alt="Additional image from ${escapeHtml(project.title)}" loading="lazy" />`}${image.caption ? `<figcaption>${richText(image.caption)}</figcaption>` : ""}</figure>`).join("");
+  const galleryItems = images.map(image => `<figure class="${image.type === "pdf" ? "pdf-figure" : ""}">${image.type === "video" ? `<video controls preload="metadata" src="${escapeHtml(image.src)}"></video>` : image.type === "pdf" ? `<iframe class="pdf-embed" src="${escapeHtml(image.src)}#view=FitH" title="${escapeHtml(project.title)} PDF" loading="lazy"></iframe><a class="pdf-fallback" href="${escapeHtml(image.src)}" target="_blank" rel="noreferrer">open PDF in a new tab ↗</a>` : `<img src="${escapeHtml(image.src)}" alt="Additional image from ${escapeHtml(project.title)}" loading="lazy" decoding="async" role="button" tabindex="0" aria-label="Open project image full screen" />`}${image.caption ? `<figcaption>${richText(image.caption)}</figcaption>` : ""}</figure>`).join("");
   gallery.innerHTML = `<button class="gallery-scroll gallery-scroll-prev" type="button" aria-label="Previous gallery image" data-gallery-scroll="-1"><i data-lucide="arrow-left"></i></button><div class="detail-gallery-track">${galleryItems}</div><button class="gallery-scroll gallery-scroll-next" type="button" aria-label="Next gallery image" data-gallery-scroll="1"><i data-lucide="arrow-right"></i></button>`;
   app.querySelector(".detail-image, .detail-gallery-anchor")?.after(gallery);
   setupGalleryControls(gallery);
@@ -280,13 +309,21 @@ function setupGalleryControls(gallery) {
     });
   });
   track.addEventListener("scroll", updateControls, { passive: true });
-  window.addEventListener("resize", updateControls, { passive: true, once: true });
+  gallery.querySelectorAll("img, video, iframe").forEach(media => media.addEventListener("load", updateControls, { once: true }));
+  if ("ResizeObserver" in window) {
+    const observer = new ResizeObserver(updateControls);
+    observer.observe(track);
+  } else {
+    window.addEventListener("resize", updateControls, { passive: true });
+  }
   requestAnimationFrame(updateControls);
 }
 
 function openImageViewer(clickedImage) {
+  document.querySelector(".image-viewer")?.closeViewer?.();
   const images = [...document.querySelectorAll(".detail-image img, .detail-gallery-track img")];
   if (!images.length) return;
+  const previousFocus = document.activeElement;
   let currentIndex = Math.max(0, images.indexOf(clickedImage));
   const viewer = document.createElement("div");
   viewer.className = "image-viewer";
@@ -314,11 +351,19 @@ function openImageViewer(clickedImage) {
     document.removeEventListener("keydown", onKeyDown);
     document.body.classList.remove("viewer-open");
     viewer.remove();
+    if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
   };
   const onKeyDown = event => {
-    if (event.key === "Escape") close();
-    if (event.key === "ArrowLeft") move(-1);
-    if (event.key === "ArrowRight") move(1);
+    if (event.key === "Escape") { event.preventDefault(); close(); }
+    if (event.key === "ArrowLeft") { event.preventDefault(); move(-1); }
+    if (event.key === "ArrowRight") { event.preventDefault(); move(1); }
+    if (event.key === "Tab") {
+      const focusable = [...viewer.querySelectorAll("button:not(:disabled)")];
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    }
   };
   previous.addEventListener("click", () => move(-1));
   next.addEventListener("click", () => move(1));
@@ -331,6 +376,7 @@ function openImageViewer(clickedImage) {
     if (Math.abs(distance) > 55) move(distance > 0 ? -1 : 1);
   }, { passive: true });
   document.addEventListener("keydown", onKeyDown);
+  viewer.closeViewer = close;
   document.body.append(viewer);
   document.body.classList.add("viewer-open");
   createIcons(); update();
@@ -352,14 +398,41 @@ function loadReading() {
   fetch("data/current-reading.json", { cache: "no-store" }).then(response => response.ok ? response.json() : Promise.reject()).then(payload => { if (Array.isArray(payload.books) && payload.books.length) renderReading(payload.books); }).catch(() => {});
 }
 
+function updatePageMetadata(page, project) {
+  const pageName = labels[page]?.toLowerCase();
+  const title = project?.title
+    ? `${project.title} — tiona zeng`
+    : page === "home" ? "tiona zeng — portfolio" : `${pageName} — tiona zeng`;
+  const description = project?.description
+    || (page === "home"
+      ? "Fine art, creative writing, and design work by Tiona Zeng."
+      : listingCopy[page]);
+  document.title = title;
+  const metadata = [
+    ['meta[name="description"]', description],
+    ['meta[property="og:title"]', title],
+    ['meta[property="og:description"]', description],
+    ['meta[name="twitter:title"]', title],
+    ['meta[name="twitter:description"]', description]
+  ];
+  metadata.forEach(([selector, content]) => document.querySelector(selector)?.setAttribute("content", content));
+  document.querySelectorAll(".site-header .nav-link").forEach(link => {
+    const active = link.getAttribute("href") === `#${page}`;
+    if (active) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  });
+}
+
 function renderPublic() {
   const [category = "home", id] = location.hash.slice(1).split("/");
   const page = ["home", "fine-art", "writing", "projects"].includes(category) ? category : "home";
   const project = id && data.projects.find(item => item.id === id);
+  document.querySelector(".image-viewer")?.closeViewer?.();
   app.classList.remove("page-enter"); void app.offsetWidth;
   app.innerHTML = `${id ? detail(page, id) : page === "home" ? home() : listing(page)}<div class="marquee marquee-bottom"><div class="marquee-track">${marqueeContent()}</div></div>`;
   if (project) renderGallery(project);
   if (page === "home") loadReading();
+  updatePageMetadata(page, project);
   app.classList.add("page-enter");
   createIcons(); scrollTo(0, 0);
 }
@@ -397,6 +470,12 @@ function setupProjectReordering() {
         item.classList.add("is-dragging");
       });
       item.addEventListener("dragend", () => item.classList.remove("is-dragging"));
+      item.addEventListener("keydown", event => {
+        if ((event.key === "Enter" || event.key === " ") && !event.target.closest("button")) {
+          event.preventDefault();
+          openProjectForm(item.dataset.edit);
+        }
+      });
       item.addEventListener("dragover", event => {
         event.preventDefault();
         event.dataTransfer.dropEffect = "move";
@@ -498,14 +577,42 @@ function renderGalleryOrder(project) {
 function setupEditor() {
   if (!modal) return;
   modal.showModal(); modal.append(cursor);
+  modal.addEventListener("cancel", event => event.preventDefault());
+  activateEditorTab(document.querySelector(".editor-tab.active"));
   populateEditor(); renderProjectList(); refreshMediaLibrary();
   document.addEventListener("click", handleEditorClick);
+  document.querySelector(".editor-tabs")?.addEventListener("keydown", event => {
+    if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    const tabs = [...document.querySelectorAll(".editor-tab")];
+    const current = tabs.indexOf(document.activeElement);
+    if (current < 0) return;
+    event.preventDefault();
+    const next = event.key === "Home" ? 0
+      : event.key === "End" ? tabs.length - 1
+      : (current + (event.key === "ArrowDown" || event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+    tabs[next].focus();
+    activateEditorTab(tabs[next]);
+  });
   document.querySelector("#project-form").addEventListener("submit", saveProject);
   document.querySelector("#studio-name").addEventListener("input", event => { data.studioName = event.target.value || defaults.studioName; saveLocalArchive(); });
   document.querySelector("#accent-color").addEventListener("input", event => { data.accent = event.target.value; saveLocalArchive(); });
   document.querySelector("#font-upload").addEventListener("change", uploadFont);
   document.querySelector("#gallery-upload").addEventListener("change", showAttachedMedia);
   document.querySelector("#editor-password")?.addEventListener("submit", changeEditorPassword);
+}
+
+function activateEditorTab(tab) {
+  document.querySelectorAll(".editor-tab").forEach(button => {
+    const selected = button === tab;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-selected", String(selected));
+    button.tabIndex = selected ? 0 : -1;
+  });
+  document.querySelectorAll(".tab-panel").forEach(panel => {
+    const selected = panel.id === `${tab.dataset.tab}-tab`;
+    panel.classList.toggle("active", selected);
+    panel.hidden = !selected;
+  });
 }
 
 function showAttachedMedia(event) {
@@ -662,8 +769,7 @@ async function handleEditorClick(event) {
   if (deleteMedia) await deleteMediaFile(deleteMedia.dataset.deleteMedia);
   const tab = target.closest(".editor-tab");
   if (tab) {
-    document.querySelectorAll(".editor-tab, .tab-panel").forEach(element => element.classList.remove("active"));
-    tab.classList.add("active"); document.querySelector(`#${tab.dataset.tab}-tab`).classList.add("active");
+    activateEditorTab(tab);
     if (tab.dataset.tab === "media") refreshMediaLibrary(true);
   }
   if (target.closest(".refresh-media")) {
@@ -683,6 +789,12 @@ async function handleEditorClick(event) {
     data.links = { linkedin: externalUrl(document.querySelector("#linkedin-url").value), rednote: externalUrl(document.querySelector("#rednote-url").value), instagram: externalUrl(document.querySelector("#instagram-url").value), resume: externalUrl(document.querySelector("#resume-url").value) };
     try { await saveArchive(); showFormNotice(document.querySelector("#about-tab"), "changes saved.", "success"); }
     catch (error) { showFormNotice(document.querySelector("#about-tab"), error.message || "Unable to save changes."); }
+  }
+  if (target.closest(".save-appearance")) {
+    data.studioName = document.querySelector("#studio-name").value.trim() || defaults.studioName;
+    data.accent = document.querySelector("#accent-color").value;
+    try { await saveArchive(); showFormNotice(document.querySelector("#appearance-tab"), "appearance saved.", "success"); }
+    catch (error) { showFormNotice(document.querySelector("#appearance-tab"), error.message || "Unable to save appearance."); }
   }
   if (target.closest(".export-data")) {
     const download = document.createElement("a");
@@ -737,6 +849,7 @@ function formatText(fieldName, format) {
 }
 
 function showFormNotice(form, message, type = "error") {
+  if (!form) return;
   form.querySelector(".form-notice")?.remove();
   const notice = `<p class="form-notice ${type}" role="status">${escapeHtml(message)}</p>`;
   const actions = form.querySelector(".form-actions");
@@ -749,7 +862,7 @@ function safeMediaName(file) {
 }
 
 async function uploadMedia(file) {
-  if (!sb || !currentUser) throw new Error("Sign in to upload images and videos.");
+  if (!sb || !currentUser) throw new Error("Sign in to upload files.");
   const path = `${currentUser.id}/${Date.now()}-${crypto.randomUUID()}-${safeMediaName(file)}`;
   const { error } = await sb.storage.from(MEDIA_BUCKET).upload(path, file, {
     cacheControl: "3600",
@@ -764,6 +877,10 @@ async function uploadMedia(file) {
 async function saveProject(event) {
   event.preventDefault();
   const form = event.currentTarget;
+  const submit = form.querySelector('[type="submit"]');
+  if (submit?.disabled) return;
+  submit?.setAttribute("aria-busy", "true");
+  if (submit) submit.disabled = true;
   try {
     const files = [...pendingMediaFiles];
     const values = Object.fromEntries(new FormData(form));
@@ -797,13 +914,22 @@ async function saveProject(event) {
   } catch (error) {
     const message = error.message || "That file could not be uploaded. Try again or use a public media URL.";
     showFormNotice(form, message);
+  } finally {
+    submit?.removeAttribute("aria-busy");
+    if (submit) submit.disabled = false;
   }
 }
 
 function uploadFont(event) {
   const file = event.target.files[0]; if (!file) return;
   const reader = new FileReader();
-  reader.onload = () => { data.font = reader.result; data.fontName = file.name; const style = document.querySelector("#custom-font") || Object.assign(document.createElement("style"), { id: "custom-font" }); style.textContent = `@font-face{font-family:StudioCustom;src:url(${data.font})}`; document.head.append(style); document.documentElement.style.setProperty("--display", "StudioCustom, SneakyTimes, serif"); saveLocalArchive(); document.querySelector("#font-name").textContent = file.name; };
+  reader.onload = () => {
+    data.font = reader.result;
+    data.fontName = file.name;
+    saveLocalArchive();
+    document.querySelector("#font-name").textContent = file.name;
+    showFormNotice(document.querySelector("#appearance-tab"), "font ready — save appearance to publish it.", "success");
+  };
   reader.readAsDataURL(file);
 }
 
@@ -836,7 +962,29 @@ function setupHaptics() {
 }
 
 function setupAnnotations() {
-  document.addEventListener("click", event => { const annotation = event.target.closest(".annotation"); if (!annotation) return; document.querySelectorAll(".annotation.open").forEach(item => { if (item !== annotation) item.classList.remove("open"); }); annotation.classList.toggle("open"); });
+  document.addEventListener("click", event => {
+    const annotation = event.target.closest(".annotation");
+    document.querySelectorAll(".annotation.open").forEach(item => {
+      if (item !== annotation) { item.classList.remove("open"); item.setAttribute("aria-expanded", "false"); }
+    });
+    if (!annotation) return;
+    const open = annotation.classList.toggle("open");
+    annotation.setAttribute("aria-expanded", String(open));
+  });
+  document.addEventListener("keydown", event => {
+    const image = event.target.closest?.('.detail-image img, .detail-gallery-track img');
+    if (image && (event.key === "Enter" || event.key === " ")) {
+      event.preventDefault();
+      openImageViewer(image);
+      return;
+    }
+    if (event.key === "Escape") {
+      document.querySelectorAll(".annotation.open").forEach(item => {
+        item.classList.remove("open");
+        item.setAttribute("aria-expanded", "false");
+      });
+    }
+  });
   document.addEventListener("click", event => {
     const image = event.target.closest(".detail-image img, .detail-gallery-track img");
     if (image) openImageViewer(image);
@@ -858,8 +1006,6 @@ async function startApp() {
     setupEditor();
     return;
   }
-  const currentYear = document.querySelector("#current-year");
-  if (currentYear) currentYear.textContent = new Date().getFullYear();
   window.addEventListener("hashchange", renderPublic);
   setupAnnotations(); renderPublic();
 }
