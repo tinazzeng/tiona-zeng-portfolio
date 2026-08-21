@@ -288,35 +288,8 @@ function renderGallery(project) {
   const gallery = document.createElement("section");
   gallery.className = `detail-gallery${images.some(image => image.type === "pdf") ? " has-pdf" : ""}`;
   const galleryItems = images.map(image => `<figure class="${image.type === "pdf" ? "pdf-figure" : ""}">${image.type === "video" ? `<video controls preload="metadata" src="${escapeHtml(image.src)}"></video>` : image.type === "pdf" ? `<iframe class="pdf-embed" src="${escapeHtml(image.src)}#view=FitH" title="${escapeHtml(project.title)} PDF" loading="lazy"></iframe><a class="pdf-fallback" href="${escapeHtml(image.src)}" target="_blank" rel="noreferrer">open PDF in a new tab ↗</a>` : `<img src="${escapeHtml(image.src)}" alt="Additional image from ${escapeHtml(project.title)}" loading="lazy" decoding="async" role="button" tabindex="0" aria-label="Open project image full screen" />`}${image.caption ? `<figcaption>${richText(image.caption)}</figcaption>` : ""}</figure>`).join("");
-  gallery.innerHTML = `<button class="gallery-scroll gallery-scroll-prev" type="button" aria-label="Previous gallery image" data-gallery-scroll="-1"><i data-lucide="arrow-left"></i></button><div class="detail-gallery-track">${galleryItems}</div><button class="gallery-scroll gallery-scroll-next" type="button" aria-label="Next gallery image" data-gallery-scroll="1"><i data-lucide="arrow-right"></i></button>`;
+  gallery.innerHTML = `<div class="detail-gallery-track">${galleryItems}</div>`;
   app.querySelector(".detail-image, .detail-gallery-anchor")?.after(gallery);
-  setupGalleryControls(gallery);
-}
-
-function setupGalleryControls(gallery) {
-  const track = gallery.querySelector(".detail-gallery-track");
-  const previous = gallery.querySelector(".gallery-scroll-prev");
-  const next = gallery.querySelector(".gallery-scroll-next");
-  const updateControls = () => {
-    const canScroll = track.scrollWidth > track.clientWidth + 2;
-    previous.disabled = !canScroll || track.scrollLeft < 2;
-    next.disabled = !canScroll || track.scrollLeft + track.clientWidth >= track.scrollWidth - 2;
-  };
-  gallery.querySelectorAll("[data-gallery-scroll]").forEach(button => {
-    button.addEventListener("click", () => {
-      const distance = Math.max(track.clientWidth * 0.78, 320);
-      track.scrollBy({ left: Number(button.dataset.galleryScroll) * distance, behavior: "smooth" });
-    });
-  });
-  track.addEventListener("scroll", updateControls, { passive: true });
-  gallery.querySelectorAll("img, video, iframe").forEach(media => media.addEventListener("load", updateControls, { once: true }));
-  if ("ResizeObserver" in window) {
-    const observer = new ResizeObserver(updateControls);
-    observer.observe(track);
-  } else {
-    window.addEventListener("resize", updateControls, { passive: true });
-  }
-  requestAnimationFrame(updateControls);
 }
 
 function openImageViewer(clickedImage) {

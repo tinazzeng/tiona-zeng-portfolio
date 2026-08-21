@@ -1891,3 +1891,75 @@ button:disabled,
     display: none;
   }
 }
+
+/* Project media follows the page's natural vertical scroll. Every item shares
+   the cover width while its original aspect ratio determines its height. */
+.detail-gallery {
+  display: block;
+  margin: 0 auto clamp(3.5rem, 7vw, 7rem);
+  max-width: 880px;
+  overflow: visible;
+  padding: 0;
+  width: calc(100% - 4vw - 104px);
+}
+
+.detail-gallery-track {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(2rem, 5vw, 5rem);
+  overflow: visible;
+  padding: 0;
+  scroll-snap-type: none;
+  width: 100%;
+}
+
+.detail-gallery-track figure,
+.detail-gallery-track figure:only-child,
+.detail-gallery-track .pdf-figure {
+  display: block;
+  flex: none;
+  height: auto;
+  margin: 0;
+  max-width: none;
+  width: 100%;
+}
+
+.detail-gallery-track img,
+.detail-gallery-track video {
+  display: block;
+  height: auto !important;
+  max-height: none;
+  max-width: none;
+  object-fit: contain;
+  width: 100% !important;
+}
+
+.detail-gallery-track figcaption {
+  margin-top: 10px;
+  width: 100%;
+}
+
+.detail-gallery.has-pdf,
+.detail-gallery.has-pdf .detail-gallery-track,
+.detail-gallery.has-pdf .pdf-figure {
+  max-width: 880px;
+  overflow: visible;
+  width: calc(100% - 4vw - 104px);
+}
+
+.detail-gallery.has-pdf .detail-gallery-track,
+.detail-gallery.has-pdf .pdf-figure {
+  width: 100%;
+}
+
+@media (max-width: 700px) {
+  .detail-gallery,
+  .detail-gallery.has-pdf {
+    max-width: none;
+    width: calc(100% - 32px);
+  }
+
+  .detail-gallery-track {
+    gap: 32px;
+  }
+}
