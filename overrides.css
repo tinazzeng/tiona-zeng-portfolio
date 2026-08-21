@@ -8,6 +8,7 @@
 
 :root {
   --display: "Sneaky Times", "Times New Roman", serif;
+  --display-tracking: -0.02em;
   --sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --mono: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
@@ -1365,10 +1366,13 @@ button:active,
 .detail-head h1,
 .section-heading h2,
 .about h2,
+.marquee,
 .about-copy > p,
 .card-title,
 .writing-row h3,
 .detail-copy p,
+.currently-reading h3,
+.currently-reading a,
 .editor-auth h1,
 .editor-sidebar h2,
 .editor-heading h3,
@@ -1380,6 +1384,7 @@ button:active,
   font-synthesis: style;
   font-variant-ligatures: common-ligatures;
   font-weight: 400;
+  letter-spacing: var(--display-tracking);
 }
 
 /* Mobile uses one clear reading column with appropriately sized touch targets.

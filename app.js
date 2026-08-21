@@ -511,8 +511,16 @@ function renderMediaLibrary() {
   const library = document.querySelector("#media-library");
   if (!library) return;
   const linked = storedMedia();
-  const all = new Map([...linked, ...mediaLibrary.map(item => [item.src, item])]);
-  const items = [...all.values()].map(item => ({ ...item, projects: item.projects || linked.find(linkedItem => linkedItem.src === item.src)?.projects || [] }));
+  const all = new Map(linked.map(item => [item.src, item]));
+  mediaLibrary.forEach(item => {
+    const existing = all.get(item.src);
+    all.set(item.src, {
+      ...existing,
+      ...item,
+      projects: item.projects?.length ? item.projects : (existing?.projects || [])
+    });
+  });
+  const items = [...all.values()];
   const folders = [
     ["images", "image"],
     ["videos", "video"],
@@ -526,25 +534,35 @@ function renderMediaLibrary() {
 }
 
 async function refreshMediaLibrary(force = false) {
-  mediaLibrary = storedMedia();
-  mediaLibraryMessage = mediaLibrary.length ? "" : "Looking for files in your storage…";
-  renderMediaLibrary();
-  if (!sb || !currentUser || (mediaLibraryLoaded && !force)) return;
-  const { data: files, error } = await sb.storage.from(MEDIA_BUCKET).list(currentUser.id, { limit: 1000, sortBy: { column: "created_at", order: "desc" } });
-  if (error) {
-    mediaLibraryMessage = "Storage could not be reached right now. Files attached to projects are still shown here.";
+  const library = document.querySelector("#media-library");
+  library?.setAttribute("aria-busy", "true");
+  try {
+    mediaLibrary = storedMedia();
+    mediaLibraryMessage = mediaLibrary.length ? "Refreshing media library…" : "Looking for files in your storage…";
     renderMediaLibrary();
-    return;
+    if (!sb || !currentUser || (mediaLibraryLoaded && !force)) {
+      mediaLibraryMessage = mediaLibrary.length ? "" : "No project media found yet.";
+      renderMediaLibrary();
+      return;
+    }
+    const { data: files, error } = await sb.storage.from(MEDIA_BUCKET).list(currentUser.id, { limit: 1000, sortBy: { column: "created_at", order: "desc" } });
+    if (error) throw error;
+    mediaLibraryLoaded = true;
+    const linked = storedMedia();
+    mediaLibrary = (files || []).filter(file => file.name && file.name !== ".emptyFolderPlaceholder").map(file => {
+      const path = `${currentUser.id}/${file.name}`;
+      const { data: publicUrl } = sb.storage.from(MEDIA_BUCKET).getPublicUrl(path);
+      const src = publicUrl.publicUrl;
+      return { src, path, type: mediaKind(file.name), projects: linked.find(item => item.src === src)?.projects || [] };
+    });
+    mediaLibraryMessage = mediaLibrary.length || linked.length ? "" : "No uploads yet. Add files to a project and they’ll appear here automatically.";
+    renderMediaLibrary();
+  } catch (error) {
+    mediaLibraryMessage = `Media library could not load: ${error.message || "Please try again."}`;
+    renderMediaLibrary();
+  } finally {
+    library?.removeAttribute("aria-busy");
   }
-  mediaLibraryLoaded = true;
-  mediaLibrary = (files || []).filter(file => file.name && file.name !== ".emptyFolderPlaceholder").map(file => {
-    const path = `${currentUser.id}/${file.name}`;
-    const { data: publicUrl } = sb.storage.from(MEDIA_BUCKET).getPublicUrl(path);
-    const src = publicUrl.publicUrl;
-    return { src, path, type: mediaKind(file.name), projects: storedMedia().find(item => item.src === src)?.projects || [] };
-  });
-  mediaLibraryMessage = mediaLibrary.length || storedMedia().length ? "" : "No uploads yet. Add files to a project and they’ll appear here automatically.";
-  renderMediaLibrary();
 }
 
 function openProjectForm(id = "") {
@@ -773,8 +791,12 @@ async function handleEditorClick(event) {
     if (tab.dataset.tab === "media") refreshMediaLibrary(true);
   }
   if (target.closest(".refresh-media")) {
+    const refresh = target.closest(".refresh-media");
+    refresh.disabled = true;
+    refresh.textContent = "refreshing…";
     mediaLibraryLoaded = false;
-    await refreshMediaLibrary(true);
+    try { await refreshMediaLibrary(true); }
+    finally { refresh.disabled = false; refresh.textContent = "refresh library"; }
   }
   if (target.closest(".delete-project") && editingId) {
     if (!confirm("Delete this project? Its uploaded files will stay in your media library.")) return;
