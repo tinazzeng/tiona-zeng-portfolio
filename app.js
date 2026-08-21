@@ -205,6 +205,10 @@ function homeSection(label, title, href, linkText, content, className = "") {
   return `<section class="home-sections ${className}"><div class="section-heading"><div><p>${label}</p><h2><a href="${href}">${title}</a></h2></div><a class="text-link" href="${href}">${linkText}</a></div><div class="feature-grid">${content}</div></section>`;
 }
 
+function writingHomeSection(content) {
+  return `<section class="home-sections writing-home"><div class="section-heading"><div><p>02 / shower & regular thoughts alike</p><h2><a href="#writing">writing</a></h2></div><a class="text-link" href="#writing">browse more</a></div><div class="writing-list">${content}</div></section>`;
+}
+
 function marqueeContent() {
   const phrase = '<span class="marquee-phrase">thanks for stopping by</span><span class="marquee-separator">✶</span>';
   const group = phrase.repeat(4);
@@ -216,7 +220,7 @@ function home() {
   const writing = data.projects.filter(project => project.category === "writing").slice(0, 3);
   const design = data.projects.filter(project => project.category === "projects").slice(0, 3);
   const writingRows = writing.length ? writing.map(writingRow).join("") : emptyShelf();
-  return `<section class="hero"><div><h1><em>welcome.</em></h1><p class="intro">Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)</p></div><div class="hero-art"><img src="assets/graphics/portfolio-graphic.svg?v=20260820-12" alt="" /></div><div class="hero-bottom"><span>scroll to explore my mind</span><span>student / artist / writer / designer <i data-lucide="arrow-down"></i></span></div></section>${homeSection("01 / pieces that challenge me in every way", "fine art", "#fine-art", "see all work →", art.map(card).join("") || emptyShelf())}${homeSection("02 / shower & regular thoughts alike", "writing", "#writing", "read more →", writingRows)}${homeSection("03 / projects with clients", "design", "#projects", "see design work →", design.map(card).join("") || emptyShelf(), "design-preview")}<section class="about"><h2><em>nice to meet you</em></h2><div class="about-copy"><p>${aboutText()}</p>${socialLinks()}</div></section>`;
+  return `<section class="hero"><div><h1><em>welcome.</em></h1><p class="intro">Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)</p></div><div class="hero-art"><img src="assets/graphics/portfolio-graphic.svg?v=20260820-12" alt="" /></div><div class="hero-bottom"><span>scroll to explore my mind</span><span>student / artist / writer / designer <i data-lucide="arrow-down"></i></span></div></section>${homeSection("01 / pieces that challenge me in every way", "fine art", "#fine-art", "browse more", art.map(card).join("") || emptyShelf())}${writingHomeSection(writingRows)}${homeSection("03 / projects with clients", "design", "#projects", "browse more", design.map(card).join("") || emptyShelf(), "design-preview")}<section class="about"><h2><em>nice to meet you</em></h2><div class="about-copy"><p>${aboutText()}</p>${socialLinks()}</div></section>`;
 }
 
 function writingRow(project) {
@@ -249,8 +253,30 @@ function renderGallery(project) {
   if (!images.length) return;
   const gallery = document.createElement("section");
   gallery.className = "detail-gallery";
-  gallery.innerHTML = images.map(image => `<figure class="${image.type === "pdf" ? "pdf-figure" : ""}">${image.type === "video" ? `<video controls preload="metadata" src="${escapeHtml(image.src)}"></video>` : image.type === "pdf" ? `<iframe class="pdf-embed" src="${escapeHtml(image.src)}#view=FitH" title="${escapeHtml(project.title)} PDF" loading="lazy"></iframe><a class="pdf-fallback" href="${escapeHtml(image.src)}" target="_blank" rel="noreferrer">open PDF in a new tab ↗</a>` : `<img src="${escapeHtml(image.src)}" alt="Additional image from ${escapeHtml(project.title)}" loading="lazy" />`}${image.caption ? `<figcaption>${richText(image.caption)}</figcaption>` : ""}</figure>`).join("");
+  const galleryItems = images.map(image => `<figure class="${image.type === "pdf" ? "pdf-figure" : ""}">${image.type === "video" ? `<video controls preload="metadata" src="${escapeHtml(image.src)}"></video>` : image.type === "pdf" ? `<iframe class="pdf-embed" src="${escapeHtml(image.src)}#view=FitH" title="${escapeHtml(project.title)} PDF" loading="lazy"></iframe><a class="pdf-fallback" href="${escapeHtml(image.src)}" target="_blank" rel="noreferrer">open PDF in a new tab ↗</a>` : `<img src="${escapeHtml(image.src)}" alt="Additional image from ${escapeHtml(project.title)}" loading="lazy" />`}${image.caption ? `<figcaption>${richText(image.caption)}</figcaption>` : ""}</figure>`).join("");
+  gallery.innerHTML = `<button class="gallery-scroll gallery-scroll-prev" type="button" aria-label="Previous gallery image" data-gallery-scroll="-1"><i data-lucide="arrow-left"></i></button><div class="detail-gallery-track">${galleryItems}</div><button class="gallery-scroll gallery-scroll-next" type="button" aria-label="Next gallery image" data-gallery-scroll="1"><i data-lucide="arrow-right"></i></button>`;
   app.querySelector(".detail-image")?.after(gallery);
+  setupGalleryControls(gallery);
+}
+
+function setupGalleryControls(gallery) {
+  const track = gallery.querySelector(".detail-gallery-track");
+  const previous = gallery.querySelector(".gallery-scroll-prev");
+  const next = gallery.querySelector(".gallery-scroll-next");
+  const updateControls = () => {
+    const canScroll = track.scrollWidth > track.clientWidth + 2;
+    previous.disabled = !canScroll || track.scrollLeft < 2;
+    next.disabled = !canScroll || track.scrollLeft + track.clientWidth >= track.scrollWidth - 2;
+  };
+  gallery.querySelectorAll("[data-gallery-scroll]").forEach(button => {
+    button.addEventListener("click", () => {
+      const distance = Math.max(track.clientWidth * 0.78, 320);
+      track.scrollBy({ left: Number(button.dataset.galleryScroll) * distance, behavior: "smooth" });
+    });
+  });
+  track.addEventListener("scroll", updateControls, { passive: true });
+  window.addEventListener("resize", updateControls, { passive: true, once: true });
+  requestAnimationFrame(updateControls);
 }
 
 function renderReading(books) {
