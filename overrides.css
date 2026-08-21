@@ -1125,7 +1125,10 @@ button:active,
 
 /* Project pages share one calm, consistent image stage. */
 :root {
-  --gallery-width: min(880px, calc(100% - 8vw));
+  /* The cover and gallery viewport share one image width. The arrows live
+     outside that viewport, so they never narrow the work itself. */
+  --gallery-width: min(984px, calc(100% - 4vw));
+  --gallery-content-width: calc(var(--gallery-width) - 104px);
   --gallery-height: clamp(250px, 34vw, 420px);
 }
 
@@ -1149,8 +1152,8 @@ button:active,
   height: var(--gallery-height);
   justify-content: center;
   margin: clamp(2rem, 4vw, 4rem) auto;
-  max-width: var(--gallery-width);
-  width: var(--gallery-width);
+  max-width: var(--gallery-content-width);
+  width: var(--gallery-content-width);
 }
 
 .detail-image img {
@@ -1194,7 +1197,7 @@ button:active,
   align-items: center;
   display: grid;
   gap: 12px;
-  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  grid-template-columns: 40px minmax(0, var(--gallery-content-width)) 40px;
   margin: 0 auto clamp(3.5rem, 6vw, 6rem);
   max-width: var(--gallery-width);
   overflow: visible;
@@ -1276,6 +1279,7 @@ button:active,
 @media (max-width: 700px) {
   :root {
     --gallery-width: calc(100% - 40px);
+    --gallery-content-width: calc(var(--gallery-width) - 80px);
     --gallery-height: min(48vh, 320px);
   }
 
@@ -1345,6 +1349,7 @@ button:active,
   line-clamp: 3;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+  line-height: 1.1;
   overflow: visible;
 }
 
