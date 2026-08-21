@@ -1939,6 +1939,25 @@ button:disabled,
   width: 100%;
 }
 
+.detail-gallery-anchor + .detail-gallery {
+  margin-top: clamp(2.75rem, 6vw, 6rem);
+}
+
+.external-text-link,
+.pdf-fallback,
+.reading-profile {
+  align-items: center;
+  display: inline-flex;
+  gap: .4em;
+}
+
+.external-link-icon {
+  display: block;
+  flex: 0 0 auto;
+  height: 1em;
+  width: 1em;
+}
+
 .detail-gallery.has-pdf,
 .detail-gallery.has-pdf .detail-gallery-track,
 .detail-gallery.has-pdf .pdf-figure {

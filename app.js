@@ -250,7 +250,7 @@ function home() {
   const writing = data.projects.filter(project => project.category === "writing").slice(0, 3);
   const design = data.projects.filter(project => project.category === "projects").slice(0, 3);
   const writingRows = writing.length ? writing.map(writingRow).join("") : emptyShelf();
-  return `<section class="hero"><div><h1><em>welcome.</em></h1><p class="intro">Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)</p></div><div class="hero-art"><img src="assets/graphics/portfolio-graphic.svg?v=20260820-12" alt="" /></div><div class="hero-bottom"><span>scroll to explore my mind</span><span>student / artist / writer / designer <i data-lucide="arrow-down"></i></span></div></section>${homeSection("01 / pieces that challenge me in every way", "fine art", "#fine-art", "browse more", art.map(card).join("") || emptyShelf())}${writingHomeSection(writingRows)}${homeSection("03 / projects with clients", "design", "#projects", "browse more", design.map(card).join("") || emptyShelf(), "design-preview")}<section class="about"><h2><em>nice to meet you</em></h2><div class="about-copy"><p>${aboutText()}</p>${socialLinks()}</div></section>`;
+  return `<section class="hero"><div><h1><em>welcome.</em></h1><p class="intro">Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)</p></div><div class="hero-art"><img src="assets/graphics/portfolio-graphic.svg?v=20260820-12" alt="" /></div><div class="hero-bottom"><span>scroll to explore my mind</span><span>student / artist / writer / designer <i data-lucide="arrow-down"></i></span></div></section>${homeSection("01 / pieces that challenge me in ever different ways", "fine art", "#fine-art", "browse more", art.map(card).join("") || emptyShelf())}${writingHomeSection(writingRows)}${homeSection("03 / projects with clients", "design", "#projects", "browse more", design.map(card).join("") || emptyShelf(), "design-preview")}<section class="about"><h2><em>nice to meet you</em></h2><div class="about-copy"><p>${aboutText()}</p>${socialLinks()}</div></section>`;
 }
 
 function writingRow(project) {
@@ -275,7 +275,7 @@ function detail(category, id) {
   const meta = [project.year, project.medium].filter(Boolean).map(value => `<span>${escapeHtml(value)}</span>`).join("");
   const credits = project.credits ? `<h3>credits</h3><p>${escapeHtml(project.credits)}</p>` : "";
   const notes = project.notes ? `<h3>more information</h3><p>${richText(project.notes)}</p>` : "";
-  return `<article class="detail"><a class="back" href="#${category}"><i data-lucide="arrow-left"></i> back to ${labels[category]}</a><div class="detail-head"><h1>${escapeHtml(project.title)}</h1><div class="detail-meta">${meta}${project.description ? `<p class="detail-description">${escapeHtml(project.description)}</p>` : ""}</div></div>${cover}<div class="detail-copy"><div>${credits}${notes}${project.link ? `<a href="${escapeHtml(externalUrl(project.link))}" target="_blank" rel="noreferrer">visit external link ↗</a>` : ""}</div></div></article>`;
+  return `<article class="detail"><a class="back" href="#${category}"><i data-lucide="arrow-left"></i> back to ${labels[category]}</a><div class="detail-head"><h1>${escapeHtml(project.title)}</h1><div class="detail-meta">${meta}${project.description ? `<p class="detail-description">${escapeHtml(project.description)}</p>` : ""}</div></div>${cover}<div class="detail-copy"><div>${credits}${notes}${project.link ? `<a class="external-text-link" href="${escapeHtml(externalUrl(project.link))}" target="_blank" rel="noreferrer">visit external link <i class="external-link-icon" data-lucide="arrow-up-right" aria-hidden="true"></i></a>` : ""}</div></div></article>`;
 }
 
 function renderGallery(project) {
@@ -287,7 +287,7 @@ function renderGallery(project) {
   if (!images.length) return;
   const gallery = document.createElement("section");
   gallery.className = `detail-gallery${images.some(image => image.type === "pdf") ? " has-pdf" : ""}`;
-  const galleryItems = images.map(image => `<figure class="${image.type === "pdf" ? "pdf-figure" : ""}">${image.type === "video" ? `<video controls preload="metadata" src="${escapeHtml(image.src)}"></video>` : image.type === "pdf" ? `<iframe class="pdf-embed" src="${escapeHtml(image.src)}#view=FitH" title="${escapeHtml(project.title)} PDF" loading="lazy"></iframe><a class="pdf-fallback" href="${escapeHtml(image.src)}" target="_blank" rel="noreferrer">open PDF in a new tab ↗</a>` : `<img src="${escapeHtml(image.src)}" alt="Additional image from ${escapeHtml(project.title)}" loading="lazy" decoding="async" role="button" tabindex="0" aria-label="Open project image full screen" />`}${image.caption ? `<figcaption>${richText(image.caption)}</figcaption>` : ""}</figure>`).join("");
+  const galleryItems = images.map(image => `<figure class="${image.type === "pdf" ? "pdf-figure" : ""}">${image.type === "video" ? `<video controls preload="metadata" src="${escapeHtml(image.src)}"></video>` : image.type === "pdf" ? `<iframe class="pdf-embed" src="${escapeHtml(image.src)}#view=FitH" title="${escapeHtml(project.title)} PDF" loading="lazy"></iframe><a class="pdf-fallback" href="${escapeHtml(image.src)}" target="_blank" rel="noreferrer">open PDF in a new tab <i class="external-link-icon" data-lucide="arrow-up-right" aria-hidden="true"></i></a>` : `<img src="${escapeHtml(image.src)}" alt="Additional image from ${escapeHtml(project.title)}" loading="lazy" decoding="async" role="button" tabindex="0" aria-label="Open project image full screen" />`}${image.caption ? `<figcaption>${richText(image.caption)}</figcaption>` : ""}</figure>`).join("");
   gallery.innerHTML = `<div class="detail-gallery-track">${galleryItems}</div>`;
   app.querySelector(".detail-image, .detail-gallery-anchor")?.after(gallery);
 }
@@ -362,8 +362,9 @@ function renderReading(books) {
   about.querySelector(".currently-reading")?.remove();
   const section = document.createElement("section");
   section.className = "currently-reading";
-  section.innerHTML = `<p class="eyebrow">currently reading</p><ol>${books.map(book => `<li><a href="${escapeHtml(book.url)}" target="_blank" rel="noreferrer"><em>${escapeHtml(book.title)}</em></a><span>by ${escapeHtml(book.author)}</span></li>`).join("")}</ol><a class="reading-profile" href="https://www.goodreads.com/user/show/34056305-tz" target="_blank" rel="noreferrer">view my goodreads →</a>`;
+  section.innerHTML = `<p class="eyebrow">currently reading</p><ol>${books.map(book => `<li><a href="${escapeHtml(book.url)}" target="_blank" rel="noreferrer"><em>${escapeHtml(book.title)}</em></a><span>by ${escapeHtml(book.author)}</span></li>`).join("")}</ol><a class="reading-profile" href="https://www.goodreads.com/user/show/34056305-tz" target="_blank" rel="noreferrer">view my goodreads <i class="external-link-icon" data-lucide="arrow-up-right" aria-hidden="true"></i></a>`;
   about.append(section);
+  createIcons();
 }
 
 function loadReading() {
