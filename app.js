@@ -284,6 +284,59 @@ function setupGalleryControls(gallery) {
   requestAnimationFrame(updateControls);
 }
 
+function openImageViewer(clickedImage) {
+  const images = [...document.querySelectorAll(".detail-image img, .detail-gallery-track img")];
+  if (!images.length) return;
+  let currentIndex = Math.max(0, images.indexOf(clickedImage));
+  const viewer = document.createElement("div");
+  viewer.className = "image-viewer";
+  viewer.setAttribute("role", "dialog");
+  viewer.setAttribute("aria-modal", "true");
+  viewer.setAttribute("aria-label", "Full-screen image viewer");
+  viewer.innerHTML = `<button class="image-viewer-close" type="button" aria-label="Close full-screen image"><i data-lucide="x"></i></button><button class="image-viewer-nav image-viewer-prev" type="button" aria-label="Previous image"><i data-lucide="arrow-left"></i></button><figure><img alt="" /><figcaption></figcaption></figure><button class="image-viewer-nav image-viewer-next" type="button" aria-label="Next image"><i data-lucide="arrow-right"></i></button>`;
+  const fullImage = viewer.querySelector("img");
+  const counter = viewer.querySelector("figcaption");
+  const previous = viewer.querySelector(".image-viewer-prev");
+  const next = viewer.querySelector(".image-viewer-next");
+  const update = () => {
+    const source = images[currentIndex];
+    fullImage.src = source.currentSrc || source.src;
+    fullImage.alt = source.alt || "Project image";
+    counter.textContent = `${currentIndex + 1} / ${images.length}`;
+    previous.disabled = images.length < 2;
+    next.disabled = images.length < 2;
+  };
+  const move = direction => {
+    currentIndex = (currentIndex + direction + images.length) % images.length;
+    update();
+  };
+  const close = () => {
+    document.removeEventListener("keydown", onKeyDown);
+    document.body.classList.remove("viewer-open");
+    viewer.remove();
+  };
+  const onKeyDown = event => {
+    if (event.key === "Escape") close();
+    if (event.key === "ArrowLeft") move(-1);
+    if (event.key === "ArrowRight") move(1);
+  };
+  previous.addEventListener("click", () => move(-1));
+  next.addEventListener("click", () => move(1));
+  viewer.querySelector(".image-viewer-close").addEventListener("click", close);
+  viewer.addEventListener("click", event => { if (event.target === viewer) close(); });
+  let pointerStart = 0;
+  viewer.addEventListener("pointerdown", event => { pointerStart = event.clientX; }, { passive: true });
+  viewer.addEventListener("pointerup", event => {
+    const distance = event.clientX - pointerStart;
+    if (Math.abs(distance) > 55) move(distance > 0 ? -1 : 1);
+  }, { passive: true });
+  document.addEventListener("keydown", onKeyDown);
+  document.body.append(viewer);
+  document.body.classList.add("viewer-open");
+  createIcons(); update();
+  viewer.querySelector(".image-viewer-close").focus();
+}
+
 function renderReading(books) {
   const about = app.querySelector(".about");
   if (!about) return;
@@ -784,6 +837,10 @@ function setupHaptics() {
 
 function setupAnnotations() {
   document.addEventListener("click", event => { const annotation = event.target.closest(".annotation"); if (!annotation) return; document.querySelectorAll(".annotation.open").forEach(item => { if (item !== annotation) item.classList.remove("open"); }); annotation.classList.toggle("open"); });
+  document.addEventListener("click", event => {
+    const image = event.target.closest(".detail-image img, .detail-gallery-track img");
+    if (image) openImageViewer(image);
+  });
 }
 
 async function startApp() {

@@ -1583,3 +1583,186 @@ button:active,
     margin-top: 14px;
   }
 }
+
+/* Final mobile sizing pass: cards follow their content, and the opening section
+   stays within the viewport. Desktop retains its fixed-height polaroid rhythm. */
+@media (max-width: 700px) {
+  .hero {
+    align-items: stretch;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 36px 20px 24px;
+    width: 100%;
+  }
+
+  .hero > div:first-child {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .hero h1 {
+    font-size: clamp(4rem, 18.5vw, 5.8rem);
+    line-height: .84;
+    max-width: 100%;
+    white-space: nowrap;
+  }
+
+  .hero .intro {
+    font-size: 1rem;
+    line-height: 1.48;
+    margin-top: 28px;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .hero-art {
+    align-self: flex-end;
+    margin: 30px 0 16px auto;
+    transform: none;
+    width: min(205px, 56vw);
+  }
+
+  .hero-bottom {
+    flex: none;
+    margin-top: 18px;
+    width: 100%;
+  }
+
+  .work-card,
+  .project-grid .work-card {
+    height: auto;
+    min-height: 0;
+    width: 100%;
+  }
+
+  .card-image {
+    height: auto;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .card-image img {
+    height: auto;
+    max-width: 100%;
+    object-fit: contain;
+    width: 100%;
+  }
+
+  .card-placeholder {
+    aspect-ratio: 4 / 3;
+    height: auto;
+    width: 100%;
+  }
+
+  .card-caption {
+    height: auto;
+    min-height: 0;
+    padding-bottom: 12px;
+  }
+
+  .card-title {
+    display: block;
+    line-clamp: unset;
+    -webkit-line-clamp: unset;
+  }
+}
+
+.detail-image img,
+.detail-gallery-track img {
+  cursor: zoom-in;
+}
+
+body.viewer-open {
+  overflow: hidden;
+}
+
+.image-viewer {
+  align-items: center;
+  background: rgba(49, 36, 33, .96);
+  color: var(--paper);
+  display: grid;
+  gap: clamp(10px, 2vw, 24px);
+  grid-template-columns: 52px minmax(0, 1fr) 52px;
+  inset: 0;
+  padding: clamp(18px, 3vw, 42px);
+  position: fixed;
+  z-index: 1000;
+}
+
+.image-viewer figure {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: center;
+  margin: 0;
+  min-height: 0;
+  min-width: 0;
+}
+
+.image-viewer img {
+  display: block;
+  height: auto;
+  max-height: calc(100dvh - 104px);
+  max-width: 100%;
+  object-fit: contain;
+  width: auto;
+}
+
+.image-viewer figcaption {
+  font: 12px var(--mono);
+  margin-top: 12px;
+}
+
+.image-viewer button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  color: inherit;
+  display: inline-flex;
+  height: 48px;
+  justify-content: center;
+  padding: 0;
+  width: 48px;
+}
+
+.image-viewer button:disabled {
+  opacity: .3;
+}
+
+.image-viewer-close {
+  position: absolute;
+  right: clamp(18px, 3vw, 42px);
+  top: clamp(18px, 3vw, 42px);
+}
+
+@media (max-width: 700px) {
+  .image-viewer {
+    gap: 0;
+    grid-template-columns: 1fr;
+    padding: 64px 16px 74px;
+  }
+
+  .image-viewer figure {
+    grid-row: 1;
+  }
+
+  .image-viewer img {
+    max-height: calc(100dvh - 160px);
+  }
+
+  .image-viewer-nav {
+    bottom: 14px;
+    position: absolute;
+  }
+
+  .image-viewer-prev {
+    left: 16px;
+  }
+
+  .image-viewer-next {
+    right: 16px;
+  }
+}
