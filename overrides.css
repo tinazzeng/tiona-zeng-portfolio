@@ -1315,3 +1315,41 @@ button:active,
     width: 32px;
   }
 }
+
+/* Titles wrap within their image-width polaroid; each section keeps a steady card height. */
+:root {
+  --polaroid-image-height: clamp(260px, 30vw, 430px);
+  --polaroid-border: clamp(12px, 1.5vw, 22px);
+  --polaroid-caption-height: 142px;
+}
+
+.work-card,
+.project-grid .work-card {
+  height: calc(var(--polaroid-image-height) + var(--polaroid-caption-height) + (var(--polaroid-border) * 2));
+  padding: var(--polaroid-border);
+}
+
+.card-image {
+  height: var(--polaroid-image-height);
+}
+
+.card-caption {
+  contain: inline-size;
+  height: var(--polaroid-caption-height);
+  min-width: 0;
+}
+
+.card-title {
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+@media (max-width: 700px) {
+  :root {
+    --polaroid-image-height: min(62vw, 360px);
+    --polaroid-caption-height: 126px;
+  }
+}
