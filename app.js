@@ -188,7 +188,7 @@ function card(project) {
   const cover = project.image
     ? `<img src="${escapeHtml(project.image)}" alt="${escapeHtml(project.title)}" loading="lazy" />`
     : `<span class="card-placeholder" style="background:${escapeHtml(project.color || "#f2d591")}"></span>`;
-  return `<a class="work-card" href="#${project.category}/${project.id}"><div class="card-image">${cover}</div><div class="card-caption"><div class="card-meta"><span>${labels[project.category]}</span><span>${escapeHtml(project.year)}</span></div><h3 class="card-title">${escapeHtml(project.title)}</h3></div></a>`;
+  return `<a class="work-card" href="#${project.category}/${project.id}"><div class="card-image">${cover}</div><div class="card-caption"><div class="card-meta"><span>${escapeHtml(project.medium || labels[project.category])}</span><span>${escapeHtml(project.year)}</span></div><h3 class="card-title">${escapeHtml(project.title)}</h3></div></a>`;
 }
 
 function aboutText() {
@@ -250,7 +250,7 @@ function detail(category, id) {
   const meta = [project.year, project.medium].filter(Boolean).map(value => `<span>${escapeHtml(value)}</span>`).join("");
   const credits = project.credits ? `<h3>credits</h3><p>${escapeHtml(project.credits)}</p>` : "";
   const notes = project.notes ? `<h3>more information</h3><p>${richText(project.notes)}</p>` : "";
-  return `<article class="detail"><a class="back" href="#${category}"><i data-lucide="arrow-left"></i> back to ${labels[category]}</a><div class="detail-head"><h1>${escapeHtml(project.title)}</h1><div class="detail-meta">${meta}</div></div>${cover}<div class="detail-copy">${project.description ? `<p>${escapeHtml(project.description)}</p>` : ""}<div>${credits}${notes}${project.link ? `<a href="${escapeHtml(externalUrl(project.link))}" target="_blank" rel="noreferrer">visit external link ↗</a>` : ""}</div></div></article>`;
+  return `<article class="detail"><a class="back" href="#${category}"><i data-lucide="arrow-left"></i> back to ${labels[category]}</a><div class="detail-head"><h1>${escapeHtml(project.title)}</h1><div class="detail-meta">${meta}${project.description ? `<p class="detail-description">${escapeHtml(project.description)}</p>` : ""}</div></div>${cover}<div class="detail-copy"><div>${credits}${notes}${project.link ? `<a href="${escapeHtml(externalUrl(project.link))}" target="_blank" rel="noreferrer">visit external link ↗</a>` : ""}</div></div></article>`;
 }
 
 function renderGallery(project) {
@@ -326,8 +326,47 @@ function populateEditor() {
 
 function renderProjectList() {
   const list = document.querySelector("#project-list");
-  list.innerHTML = data.projects.length ? data.projects.map(project => `<button class="project-item" data-edit="${project.id}"><b>${escapeHtml(project.title)}</b><span>${escapeHtml(project.year)}</span><span>${labels[project.category]}</span><i data-lucide="pencil"></i></button>`).join("") : emptyShelf();
+  const groups = [["fine-art", "fine art"], ["writing", "writing"], ["projects", "design"]];
+  list.innerHTML = data.projects.length ? groups.map(([category, title]) => {
+    const projects = data.projects.filter(project => project.category === category);
+    return `<section class="project-section"><div class="project-section-heading"><h4>${title}</h4><span>drag to reorder</span></div><div class="project-table" data-project-category="${category}">${projects.length ? projects.map(project => `<article class="project-item" data-edit="${project.id}" draggable="true" tabindex="0"><button class="project-drag" type="button" aria-label="Drag ${escapeHtml(project.title)} to reorder"><i data-lucide="grip-vertical"></i></button><b>${escapeHtml(project.title)}</b><span>${escapeHtml(project.year)}</span><i data-lucide="pencil"></i></article>`).join("") : `<p class="empty">No ${title} projects yet.</p>`}</div></section>`;
+  }).join("") : emptyShelf();
   createIcons();
+  setupProjectReordering();
+}
+
+function setupProjectReordering() {
+  document.querySelectorAll(".project-table").forEach(table => {
+    table.querySelectorAll(".project-item[draggable]").forEach(item => {
+      item.addEventListener("dragstart", event => {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", item.dataset.edit);
+        item.classList.add("is-dragging");
+      });
+      item.addEventListener("dragend", () => item.classList.remove("is-dragging"));
+      item.addEventListener("dragover", event => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+      });
+      item.addEventListener("drop", async event => {
+        event.preventDefault();
+        const draggedId = event.dataTransfer.getData("text/plain");
+        const targetId = item.dataset.edit;
+        if (!draggedId || draggedId === targetId) return;
+        const category = table.dataset.projectCategory;
+        const items = data.projects.filter(project => project.category === category);
+        const from = items.findIndex(project => project.id === draggedId);
+        const to = items.findIndex(project => project.id === targetId);
+        if (from < 0 || to < 0) return;
+        const [moved] = items.splice(from, 1);
+        items.splice(to, 0, moved);
+        let index = 0;
+        data.projects = data.projects.map(project => project.category === category ? items[index++] : project);
+        try { await saveArchive(); renderProjectList(); }
+        catch (error) { showFormNotice(document.querySelector("#content-tab"), error.message || "Unable to save the new project order."); }
+      });
+    });
+  });
 }
 
 function mediaPreview(item) {
@@ -529,7 +568,7 @@ async function handleEditorClick(event) {
   if (target.closest(".close-editor")) location.href = "../";
   if (target.closest(".add-project")) openProjectForm();
   if (target.closest(".cancel-edit, .collapse-edit")) document.querySelector("#project-form").classList.add("hidden");
-  const edit = target.closest("[data-edit]"); if (edit) openProjectForm(edit.dataset.edit);
+  const edit = target.closest("[data-edit]"); if (edit && !target.closest(".project-drag")) openProjectForm(edit.dataset.edit);
   if (target.closest(".preview-project")) {
     const project = data.projects.find(item => item.id === editingId);
     if (!project) showFormNotice(document.querySelector("#project-form"), "Save the project once before previewing it.");

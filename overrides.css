@@ -612,6 +612,85 @@ a[target="_blank"] {
   margin-top: 12px;
 }
 
+/* A consistent image stage keeps each polaroid readable, regardless of aspect ratio. */
+.work-card {
+  align-self: start;
+}
+
+.card-image {
+  align-items: center;
+  display: flex;
+  height: clamp(260px, 31vw, 430px);
+  justify-content: center;
+}
+
+.card-image img,
+.card-placeholder {
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.detail-meta .detail-description {
+  margin: clamp(1.4rem, 2.5vw, 2.4rem) 0 0;
+  max-width: 25ch;
+  font: 400 clamp(1rem, 1.35vw, 1.25rem)/1.35 var(--mono);
+  letter-spacing: -0.02em;
+  text-transform: none;
+}
+
+.detail-copy {
+  display: block;
+  margin-top: clamp(2rem, 4vw, 4rem);
+}
+
+.project-section {
+  margin-bottom: 34px;
+}
+
+.project-section-heading {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 8px;
+}
+
+.project-section-heading h4 {
+  margin: 0;
+  font: 500 1.4rem var(--display);
+}
+
+.project-section-heading span {
+  font: 11px var(--mono);
+}
+
+.project-table {
+  border-top: 1px solid var(--ink);
+}
+
+.project-item {
+  cursor: grab;
+  grid-template-columns: 34px minmax(0, 1fr) 80px 24px;
+}
+
+.project-item.is-dragging {
+  opacity: .42;
+}
+
+.project-drag {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  display: inline-flex;
+  justify-content: center;
+  padding: 0;
+}
+
+.project-drag svg {
+  width: 16px;
+}
+
 .format-tools {
   display: flex;
   gap: 12px;
@@ -1169,6 +1248,14 @@ button:active,
 
   .detail-head {
     grid-template-columns: 1fr;
+  }
+
+  .card-image {
+    height: min(58vw, 360px);
+  }
+
+  .project-item {
+    grid-template-columns: 30px minmax(0, 1fr) 52px 20px;
   }
 
   .detail-gallery-track {
