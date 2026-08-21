@@ -1320,7 +1320,7 @@ button:active,
 :root {
   --polaroid-image-height: clamp(260px, 30vw, 430px);
   --polaroid-border: clamp(12px, 1.5vw, 22px);
-  --polaroid-caption-height: 142px;
+  --polaroid-caption-height: 168px;
 }
 
 .work-card,
@@ -1334,6 +1334,7 @@ button:active,
 }
 
 .card-caption {
+  box-sizing: border-box;
   contain: inline-size;
   height: var(--polaroid-caption-height);
   min-width: 0;
@@ -1350,6 +1351,6 @@ button:active,
 @media (max-width: 700px) {
   :root {
     --polaroid-image-height: min(62vw, 360px);
-    --polaroid-caption-height: 126px;
+    --polaroid-caption-height: 148px;
   }
 }
