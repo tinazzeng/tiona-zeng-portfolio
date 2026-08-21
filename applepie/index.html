@@ -6,31 +6,28 @@
     <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" href="../favicon.svg?v=20260820-1" type="image/svg+xml" />
     <title>Tiona Zeng — Studio Editor</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../styles.css" />
-    <link rel="stylesheet" href="../overrides.css?v=20260820-28" />
+    <link rel="stylesheet" href="../overrides.css?v=20260821-1" />
   </head>
   <body class="admin-page">
     <div class="grain"></div>
     <div class="cursor-orb" aria-hidden="true"></div>
-    <main id="app"></main>
-    <dialog id="editor-modal">
+    <main id="app" tabindex="-1"></main>
+    <dialog id="editor-modal" aria-label="Studio editor">
       <div class="editor-shell">
         <aside class="editor-sidebar">
           <div><p class="eyebrow">YOUR BACKSTAGE</p><h2>Studio<br /><em>Editor</em></h2></div>
           <div class="editor-tabs" role="tablist">
-            <button class="editor-tab active" data-tab="content"><i data-lucide="folder-pen"></i> Projects</button>
-            <button class="editor-tab" data-tab="media"><i data-lucide="images"></i> Media library</button>
-            <button class="editor-tab" data-tab="appearance"><i data-lucide="palette"></i> Appearance</button>
-            <button class="editor-tab" data-tab="about"><i data-lucide="smile-plus"></i> About you</button>
+            <button id="content-tab-button" class="editor-tab active" type="button" role="tab" aria-controls="content-tab" aria-selected="true" data-tab="content"><i data-lucide="folder-pen"></i> Projects</button>
+            <button id="media-tab-button" class="editor-tab" type="button" role="tab" aria-controls="media-tab" aria-selected="false" tabindex="-1" data-tab="media"><i data-lucide="images"></i> Media library</button>
+            <button id="appearance-tab-button" class="editor-tab" type="button" role="tab" aria-controls="appearance-tab" aria-selected="false" tabindex="-1" data-tab="appearance"><i data-lucide="palette"></i> Appearance</button>
+            <button id="about-tab-button" class="editor-tab" type="button" role="tab" aria-controls="about-tab" aria-selected="false" tabindex="-1" data-tab="about"><i data-lucide="smile-plus"></i> About you</button>
           </div>
-          <div class="editor-help"><i data-lucide="lightbulb"></i><span>Everything saves in this browser automatically. Export a copy before publishing.</span></div>
+          <div class="editor-help"><i data-lucide="lightbulb"></i><span>Your changes save to the private studio archive. Export a backup whenever you make a major update.</span></div>
         </aside>
         <section class="editor-main">
           <button class="close-editor" type="button" aria-label="Return to site"><i data-lucide="x"></i></button>
-          <div id="content-tab" class="tab-panel active">
+          <div id="content-tab" class="tab-panel active" role="tabpanel" aria-labelledby="content-tab-button">
             <div class="editor-heading"><div><p class="eyebrow">THE ARCHIVE</p><h3>Your work</h3></div><button class="button dark add-project"><i data-lucide="plus"></i> Add project</button></div>
             <div class="project-list" id="project-list"></div>
             <form id="project-form" class="project-form hidden">
@@ -52,21 +49,22 @@
               <div class="form-actions"><button class="button dark" type="submit"><i data-lucide="check"></i> Save project</button><button class="text-button preview-project" type="button">Preview on site</button><button class="text-button delete-project" type="button">Delete project</button></div>
             </form>
           </div>
-          <div id="media-tab" class="tab-panel">
+          <div id="media-tab" class="tab-panel" role="tabpanel" aria-labelledby="media-tab-button" hidden>
             <div class="editor-heading"><div><p class="eyebrow">YOUR FILES</p><h3>Media library</h3></div><button class="text-button refresh-media" type="button">refresh library</button></div>
             <p class="small-copy">Files are automatically sorted into folders. Deleting a file here permanently removes it from every project that uses it.</p>
             <div id="media-library" class="media-library" aria-live="polite"></div>
           </div>
-          <div id="appearance-tab" class="tab-panel">
+          <div id="appearance-tab" class="tab-panel" role="tabpanel" aria-labelledby="appearance-tab-button" hidden>
             <div class="editor-heading"><div><p class="eyebrow">MAKE IT YOURS</p><h3>Look &amp; feel</h3></div></div>
             <div class="appearance-grid"><label>Studio name<input id="studio-name" placeholder="Tiona Zeng" /></label><label>Accent color<input id="accent-color" type="color" value="#f2d591" /></label></div>
             <label class="upload-field">Display font <input id="font-upload" type="file" accept=".woff,.woff2,.ttf,.otf" /><span><i data-lucide="upload"></i> Add the Sneaky Times font file</span><small id="font-name">Sneaky Times selected — upload its file to embed it</small></label>
+            <button class="button dark save-appearance" type="button"><i data-lucide="check"></i> Save appearance</button>
           </div>
-          <div id="about-tab" class="tab-panel">
+          <div id="about-tab" class="tab-panel" role="tabpanel" aria-labelledby="about-tab-button" hidden>
             <div class="editor-heading"><div><p class="eyebrow">NICE TO MEET YOU</p><h3>About you</h3></div></div>
             <label>Short intro<textarea id="about-copy" rows="6"></textarea></label>
             <label>Annotations<textarea id="about-annotations" rows="5" placeholder="student artist | A little note about your practice&#10;soft colors | Why this keeps showing up in your work"></textarea><small>One per line: phrase | annotation. Matching phrases become numbered, clickable footnotes.</small></label>
-            <label>Email<input id="about-email" type="email" placeholder="hello@example.com" /></label>
+            <label>Email<input id="about-email" type="email" placeholder="tinazeng16@gmail.com" /></label>
             <div class="form-grid about-links-fields">
               <label>LinkedIn URL<input id="linkedin-url" type="url" placeholder="https://linkedin.com/in/your-name" /></label>
               <label>RedNote URL<input id="rednote-url" type="url" placeholder="https://www.xiaohongshu.com/user/profile/..." /></label>
@@ -90,6 +88,6 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script src="../supabase-config.js?v=20260820-1"></script>
-    <script src="../app.js?v=20260820-37"></script>
+    <script src="../app.js?v=20260821-1"></script>
   </body>
 </html>
