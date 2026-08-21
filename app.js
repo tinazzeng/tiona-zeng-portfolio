@@ -57,12 +57,19 @@ const socialIcons = {
 
 function cloneDefaults() { return structuredClone(defaults); }
 
+function normalizeArchive(candidate) {
+  const source = candidate && typeof candidate === "object" ? candidate : {};
+  const archive = { ...cloneDefaults(), ...source, links: { ...defaults.links, ...(source.links || {}) } };
+  archive.annotations = Array.isArray(source.annotations) ? source.annotations : defaults.annotations;
+  archive.projects = Array.isArray(source.projects) ? source.projects : [];
+  return archive;
+}
+
 function loadArchive() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY) || "null");
     if (!saved) return cloneDefaults();
-    const archive = { ...cloneDefaults(), ...saved, links: { ...defaults.links, ...(saved.links || {}) } };
-    archive.annotations = Array.isArray(saved.annotations) ? saved.annotations : defaults.annotations;
+    const archive = normalizeArchive(saved);
     // One deliberate migration: the demo archive is removed once for every browser.
     if (!archive.archiveCleared) { archive.projects = []; archive.archiveCleared = true; }
     return archive;
@@ -149,9 +156,7 @@ async function hydrateArchive() {
   if (error) throw error;
   if (!remote) return;
   archiveOwner = remote.owner;
-  const content = remote.content || {};
-  data = { ...cloneDefaults(), ...content, links: { ...defaults.links, ...(content.links || {}) } };
-  data.annotations = Array.isArray(content.annotations) ? content.annotations : defaults.annotations;
+  data = normalizeArchive(remote.content);
   saveLocalArchive();
 }
 
@@ -240,8 +245,8 @@ function detail(category, id) {
   const project = data.projects.find(item => item.id === id);
   if (!project) return listing(category);
   const cover = project.image
-    ? `<figure class="detail-image"><img src="${escapeHtml(project.image)}" alt="${escapeHtml(project.title)}" /></figure>`
-    : `<div class="detail-image" style="background:${escapeHtml(project.color || "#f2d591")}"></div>`;
+    ? `<figure class="detail-image detail-image--cover"><img src="${escapeHtml(project.image)}" alt="${escapeHtml(project.title)}" /></figure>`
+    : `<div class="detail-gallery-anchor" aria-hidden="true"></div>`;
   const meta = [project.year, project.medium].filter(Boolean).map(value => `<span>${escapeHtml(value)}</span>`).join("");
   const credits = project.credits ? `<h3>credits</h3><p>${escapeHtml(project.credits)}</p>` : "";
   const notes = project.notes ? `<h3>more information</h3><p>${richText(project.notes)}</p>` : "";
@@ -255,7 +260,7 @@ function renderGallery(project) {
   gallery.className = "detail-gallery";
   const galleryItems = images.map(image => `<figure class="${image.type === "pdf" ? "pdf-figure" : ""}">${image.type === "video" ? `<video controls preload="metadata" src="${escapeHtml(image.src)}"></video>` : image.type === "pdf" ? `<iframe class="pdf-embed" src="${escapeHtml(image.src)}#view=FitH" title="${escapeHtml(project.title)} PDF" loading="lazy"></iframe><a class="pdf-fallback" href="${escapeHtml(image.src)}" target="_blank" rel="noreferrer">open PDF in a new tab ↗</a>` : `<img src="${escapeHtml(image.src)}" alt="Additional image from ${escapeHtml(project.title)}" loading="lazy" />`}${image.caption ? `<figcaption>${richText(image.caption)}</figcaption>` : ""}</figure>`).join("");
   gallery.innerHTML = `<button class="gallery-scroll gallery-scroll-prev" type="button" aria-label="Previous gallery image" data-gallery-scroll="-1"><i data-lucide="arrow-left"></i></button><div class="detail-gallery-track">${galleryItems}</div><button class="gallery-scroll gallery-scroll-next" type="button" aria-label="Next gallery image" data-gallery-scroll="1"><i data-lucide="arrow-right"></i></button>`;
-  app.querySelector(".detail-image")?.after(gallery);
+  app.querySelector(".detail-image, .detail-gallery-anchor")?.after(gallery);
   setupGalleryControls(gallery);
 }
 

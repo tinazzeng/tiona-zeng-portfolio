@@ -1020,6 +1020,12 @@ button:active,
   line-height: 1.02;
 }
 
+.detail-head {
+  align-items: start;
+  gap: clamp(1.25rem, 3vw, 3.25rem);
+  grid-template-columns: minmax(0, 3fr) minmax(150px, .7fr);
+}
+
 .detail-image {
   align-items: center;
   display: flex;
@@ -1036,6 +1042,22 @@ button:active,
   max-width: 100%;
   object-fit: contain;
   width: auto;
+}
+
+.detail-image--cover {
+  background: transparent;
+  height: auto;
+}
+
+.detail-image--cover img {
+  height: auto;
+  max-width: 100%;
+  object-fit: initial;
+  width: 100%;
+}
+
+.detail-gallery-anchor {
+  height: 0;
 }
 
 /* Give the home illustration a little more presence without crowding its copy. */
@@ -1143,6 +1165,10 @@ button:active,
   .detail-gallery {
     gap: 8px;
     grid-template-columns: 32px minmax(0, 1fr) 32px;
+  }
+
+  .detail-head {
+    grid-template-columns: 1fr;
   }
 
   .detail-gallery-track {
