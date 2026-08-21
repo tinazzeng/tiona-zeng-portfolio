@@ -691,6 +691,44 @@ a[target="_blank"] {
   width: 16px;
 }
 
+/* Let each polaroid follow its image width, while keeping the image height consistent. */
+.feature-grid,
+.project-grid {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(16px, 2vw, 30px);
+}
+
+.work-card,
+.project-grid .work-card {
+  flex: 0 1 auto;
+  max-width: 100%;
+  width: fit-content;
+}
+
+.card-image {
+  height: clamp(260px, 30vw, 430px);
+  max-width: min(82vw, 720px);
+  width: fit-content;
+}
+
+.card-image img {
+  height: 100%;
+  max-width: min(82vw, 720px);
+  object-fit: contain;
+  width: auto;
+}
+
+.card-placeholder {
+  height: 100%;
+  width: clamp(220px, 30vw, 430px);
+}
+
+.card-caption {
+  width: 100%;
+}
+
 .format-tools {
   display: flex;
   gap: 12px;
@@ -1251,7 +1289,12 @@ button:active,
   }
 
   .card-image {
-    height: min(58vw, 360px);
+    height: min(62vw, 360px);
+    max-width: 100%;
+  }
+
+  .card-image img {
+    max-width: 100%;
   }
 
   .project-item {
