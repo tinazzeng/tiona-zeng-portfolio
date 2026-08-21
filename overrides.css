@@ -1241,7 +1241,7 @@ button:active,
   height: var(--gallery-height) !important;
   max-width: none;
   min-height: 0;
-  object-fit: cover;
+  object-fit: contain;
   width: 100% !important;
 }
 
