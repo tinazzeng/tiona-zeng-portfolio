@@ -1182,14 +1182,14 @@ button:active,
 
 /* Give the home illustration a little more presence without crowding its copy. */
 .hero-art {
-  transform: translateY(-34px);
-  width: min(120%, 440px);
+  transform: translateY(-44px);
+  width: min(138%, 540px);
 }
 
 @media (max-width: 700px) {
   .hero-art {
-    transform: translateY(-12px);
-    width: min(190px, calc(100vw - 48px));
+    transform: translateY(-18px);
+    width: min(220px, calc(100vw - 40px));
   }
 }
 
@@ -1221,13 +1221,14 @@ button:active,
 .detail-gallery-track figure {
   align-items: center;
   display: flex;
-  flex: 0 0 auto;
+  flex: 0 0 var(--gallery-content-width);
   flex-direction: column;
   height: var(--gallery-height);
   justify-content: flex-start;
   margin: 0;
-  max-width: 100%;
+  max-width: var(--gallery-content-width);
   scroll-snap-align: start;
+  width: var(--gallery-content-width);
 }
 
 .detail-gallery-track figure:only-child {
@@ -1238,10 +1239,10 @@ button:active,
 .detail-gallery-track video {
   display: block;
   height: var(--gallery-height) !important;
-  max-width: min(70vw, 680px);
+  max-width: none;
   min-height: 0;
-  object-fit: contain;
-  width: auto !important;
+  object-fit: cover;
+  width: 100% !important;
 }
 
 .detail-gallery-track figcaption {

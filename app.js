@@ -393,11 +393,11 @@ function renderMediaLibrary() {
   createIcons();
 }
 
-async function refreshMediaLibrary() {
+async function refreshMediaLibrary(force = false) {
   mediaLibrary = storedMedia();
   mediaLibraryMessage = mediaLibrary.length ? "" : "Looking for files in your storage…";
   renderMediaLibrary();
-  if (!sb || !currentUser || mediaLibraryLoaded) return;
+  if (!sb || !currentUser || (mediaLibraryLoaded && !force)) return;
   const { data: files, error } = await sb.storage.from(MEDIA_BUCKET).list(currentUser.id, { limit: 1000, sortBy: { column: "created_at", order: "desc" } });
   if (error) {
     mediaLibraryMessage = "Storage could not be reached right now. Files attached to projects are still shown here.";
@@ -611,7 +611,11 @@ async function handleEditorClick(event) {
   if (tab) {
     document.querySelectorAll(".editor-tab, .tab-panel").forEach(element => element.classList.remove("active"));
     tab.classList.add("active"); document.querySelector(`#${tab.dataset.tab}-tab`).classList.add("active");
-    if (tab.dataset.tab === "media") refreshMediaLibrary();
+    if (tab.dataset.tab === "media") refreshMediaLibrary(true);
+  }
+  if (target.closest(".refresh-media")) {
+    mediaLibraryLoaded = false;
+    await refreshMediaLibrary(true);
   }
   if (target.closest(".delete-project") && editingId) {
     if (!confirm("Delete this project? Its uploaded files will stay in your media library.")) return;
@@ -734,7 +738,7 @@ async function saveProject(event) {
     values.color = existing?.color || ["#f2d591", "#d6ddec", "#d9c6e8", "#c3d8bd"][data.projects.length % 4];
     const index = data.projects.findIndex(project => project.id === values.id);
     if (index >= 0) data.projects[index] = values; else data.projects.unshift(values);
-    await saveArchive(); editingId = values.id; clearAttachedMedia(); renderProjectList(); renderMediaLibrary();
+    await saveArchive(); editingId = values.id; clearAttachedMedia(); renderProjectList(); await refreshMediaLibrary(true);
     openProjectForm(values.id);
     showFormNotice(document.querySelector("#project-form"), existing ? "project updated — preview it on the site or keep editing." : "project saved — preview it on the site or keep editing.", "success");
   } catch (error) {
