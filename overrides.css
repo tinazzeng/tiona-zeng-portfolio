@@ -1354,6 +1354,186 @@ button:active,
   overflow: visible;
 }
 
+/* Sneaky Times is supplied as a single regular weight. Requesting 500/600
+   made browsers draw an artificial bold, which is why it looked uneven. */
+.hero h1,
+.page-head h1,
+.detail-head h1,
+.section-heading h2,
+.about h2,
+.about-copy > p,
+.card-title,
+.writing-row h3,
+.detail-copy p,
+.editor-auth h1,
+.editor-sidebar h2,
+.editor-heading h3,
+.project-section-heading h4,
+.project-item b,
+.form-heading h3,
+.media-folder-heading h4 {
+  font-feature-settings: "liga" 1, "clig" 1;
+  font-synthesis: style;
+  font-variant-ligatures: common-ligatures;
+  font-weight: 400;
+}
+
+/* Mobile uses one clear reading column with appropriately sized touch targets.
+   These rules are intentionally isolated so the desktop composition stays put. */
+@media (max-width: 700px) {
+  :root {
+    --gallery-width: calc(100% - 32px);
+    --gallery-content-width: var(--gallery-width);
+  }
+
+  .site-header {
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px 20px;
+  }
+
+  .site-header nav {
+    flex: 1;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    justify-content: flex-end;
+    padding-top: 0;
+  }
+
+  .nav-link {
+    align-items: center;
+    display: inline-flex;
+    min-height: 40px;
+  }
+
+  .hero {
+    min-height: auto;
+    padding: 8vh 20px 28px;
+  }
+
+  .hero h1 {
+    font-size: clamp(4.8rem, 23vw, 8.25rem);
+    line-height: .82;
+  }
+
+  .hero .intro {
+    max-width: 34rem;
+  }
+
+  .hero-bottom {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 40px;
+  }
+
+  .home-sections,
+  .page,
+  .detail {
+    padding: 48px 20px 64px;
+  }
+
+  .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .text-link {
+    align-items: center;
+    display: inline-flex;
+    min-height: 40px;
+  }
+
+  .feature-grid,
+  .project-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .work-card,
+  .project-grid .work-card,
+  .card-image {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .card-image img {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .writing-page .writing-row,
+  .home-sections .writing-row {
+    gap: 10px 14px;
+    padding-block: 24px;
+  }
+
+  .writing-page .writing-row h3,
+  .home-sections .writing-row h3 {
+    max-width: 100%;
+  }
+
+  .detail-head {
+    gap: 22px;
+  }
+
+  .detail-head h1 {
+    font-size: clamp(2.8rem, 14vw, 4.7rem);
+    line-height: 1.06;
+  }
+
+  .detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+  }
+
+  .detail-meta span + span {
+    margin-top: 0;
+  }
+
+  .detail-gallery {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding-bottom: 60px;
+    position: relative;
+  }
+
+  .detail-gallery-track {
+    grid-row: 1;
+  }
+
+  .gallery-scroll {
+    bottom: 0;
+    height: 44px;
+    position: absolute;
+    width: 44px;
+  }
+
+  .gallery-scroll-prev {
+    left: 0;
+  }
+
+  .gallery-scroll-next {
+    right: 0;
+  }
+
+  .pdf-embed {
+    height: min(78svh, 760px);
+  }
+
+  .editor-sidebar h2 {
+    font-size: 3rem;
+  }
+
+  .editor-tab {
+    min-height: 42px;
+  }
+}
+
 @media (max-width: 700px) {
   :root {
     --polaroid-image-height: min(62vw, 360px);
