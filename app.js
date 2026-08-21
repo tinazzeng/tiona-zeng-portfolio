@@ -257,7 +257,7 @@ function renderGallery(project) {
   const images = projectImages(project).filter((image, index) => image.src !== project.image || index > 0);
   if (!images.length) return;
   const gallery = document.createElement("section");
-  gallery.className = "detail-gallery";
+  gallery.className = `detail-gallery${images.some(image => image.type === "pdf") ? " has-pdf" : ""}`;
   const galleryItems = images.map(image => `<figure class="${image.type === "pdf" ? "pdf-figure" : ""}">${image.type === "video" ? `<video controls preload="metadata" src="${escapeHtml(image.src)}"></video>` : image.type === "pdf" ? `<iframe class="pdf-embed" src="${escapeHtml(image.src)}#view=FitH" title="${escapeHtml(project.title)} PDF" loading="lazy"></iframe><a class="pdf-fallback" href="${escapeHtml(image.src)}" target="_blank" rel="noreferrer">open PDF in a new tab ↗</a>` : `<img src="${escapeHtml(image.src)}" alt="Additional image from ${escapeHtml(project.title)}" loading="lazy" />`}${image.caption ? `<figcaption>${richText(image.caption)}</figcaption>` : ""}</figure>`).join("");
   gallery.innerHTML = `<button class="gallery-scroll gallery-scroll-prev" type="button" aria-label="Previous gallery image" data-gallery-scroll="-1"><i data-lucide="arrow-left"></i></button><div class="detail-gallery-track">${galleryItems}</div><button class="gallery-scroll gallery-scroll-next" type="button" aria-label="Next gallery image" data-gallery-scroll="1"><i data-lucide="arrow-right"></i></button>`;
   app.querySelector(".detail-image, .detail-gallery-anchor")?.after(gallery);

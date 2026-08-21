@@ -1342,15 +1342,58 @@ button:active,
 
 .card-title {
   display: -webkit-box;
-  line-clamp: 2;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
+  -webkit-line-clamp: 3;
+  overflow: visible;
 }
 
 @media (max-width: 700px) {
   :root {
     --polaroid-image-height: min(62vw, 360px);
-    --polaroid-caption-height: 148px;
+    --polaroid-caption-height: 188px;
+  }
+}
+
+/* Reserve the same readable caption space in every polaroid. Long titles wrap
+   instead of being cut off. */
+:root {
+  --polaroid-caption-height: 210px;
+}
+
+@media (max-width: 700px) {
+  :root {
+    --polaroid-caption-height: 188px;
+  }
+
+  /* A browser's built-in PDF viewer needs the full screen width to stay legible. */
+  .detail-gallery.has-pdf {
+    display: block;
+    max-width: calc(100% - 32px);
+    width: calc(100% - 32px);
+  }
+
+  .detail-gallery.has-pdf .gallery-scroll {
+    display: none;
+  }
+
+  .detail-gallery.has-pdf .detail-gallery-track {
+    overflow-x: visible;
+    padding-bottom: 0;
+  }
+
+  .detail-gallery.has-pdf .pdf-figure {
+    flex-basis: 100% !important;
+    width: 100%;
+  }
+
+  .detail-gallery.has-pdf .pdf-embed {
+    height: calc(100svh - 112px);
+    min-height: 560px;
+  }
+
+  .detail-gallery.has-pdf .pdf-fallback {
+    font-size: .94rem;
+    margin-top: 14px;
   }
 }
