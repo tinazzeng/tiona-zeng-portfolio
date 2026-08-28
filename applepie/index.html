@@ -4,10 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow" />
-    <link rel="icon" href="../favicon.svg?v=20260820-1" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.svg?v=20260820-1" type="image/svg+xml" />
     <title>Tiona Zeng — Studio Editor</title>
-    <link rel="stylesheet" href="../styles.css" />
-    <link rel="stylesheet" href="../overrides.css?v=20260821-5" />
+    <link rel="stylesheet" href="/styles.css?v=20260827-1" />
   </head>
   <body class="admin-page">
     <div class="grain"></div>
@@ -20,6 +19,7 @@
           <div class="editor-tabs" role="tablist">
             <button id="content-tab-button" class="editor-tab active" type="button" role="tab" aria-controls="content-tab" aria-selected="true" data-tab="content"><i data-lucide="folder-pen"></i> Projects</button>
             <button id="media-tab-button" class="editor-tab" type="button" role="tab" aria-controls="media-tab" aria-selected="false" tabindex="-1" data-tab="media"><i data-lucide="images"></i> Media library</button>
+            <button id="history-tab-button" class="editor-tab" type="button" role="tab" aria-controls="history-tab" aria-selected="false" tabindex="-1" data-tab="history"><i data-lucide="history"></i> History &amp; drafts</button>
             <button id="appearance-tab-button" class="editor-tab" type="button" role="tab" aria-controls="appearance-tab" aria-selected="false" tabindex="-1" data-tab="appearance"><i data-lucide="palette"></i> Appearance</button>
             <button id="about-tab-button" class="editor-tab" type="button" role="tab" aria-controls="about-tab" aria-selected="false" tabindex="-1" data-tab="about"><i data-lucide="smile-plus"></i> About you</button>
           </div>
@@ -27,6 +27,7 @@
         </aside>
         <section class="editor-main">
           <button class="close-editor" type="button" aria-label="Return to site"><i data-lucide="x"></i></button>
+          <p id="save-status" class="save-status is-saved" role="status" aria-live="polite">all changes saved</p>
           <div id="content-tab" class="tab-panel active" role="tabpanel" aria-labelledby="content-tab-button">
             <div class="editor-heading"><div><p class="eyebrow">THE ARCHIVE</p><h3>Your work</h3></div><button class="button dark add-project"><i data-lucide="plus"></i> Add project</button></div>
             <div class="project-list" id="project-list"></div>
@@ -35,7 +36,7 @@
               <input type="hidden" name="id" />
               <div class="form-grid">
                 <label>Title<input required name="title" placeholder="Untitled piece" /></label>
-                <label>Year<input required name="year" placeholder="2026" /></label>
+                <label>Year<input name="year" placeholder="2026" /></label>
                 <label>Section<select name="category"><option value="fine-art">Fine Art</option><option value="writing">Writing</option><option value="projects">Design</option></select></label>
                 <label>Medium<input name="medium" placeholder="Photography, poem, campaign..." /></label>
               </div>
@@ -44,6 +45,12 @@
               <label>Or add image / PDF / MP4 URLs<textarea name="galleryUrls" rows="3" placeholder="One public media URL per line"></textarea></label>
               <div id="gallery-order" class="gallery-order" aria-live="polite"><p class="small-copy">After you save, you can reorder files, remove them from this project, and add captions here.</p></div>
               <label>Short description<textarea name="description" rows="3" placeholder="A little introduction to the work."></textarea></label>
+              <div class="case-study-fields">
+                <label>Role<textarea name="role" rows="2" placeholder="What was your role?"></textarea></label>
+                <label>Challenge<textarea name="challenge" rows="3" placeholder="What problem or question did the project address?"></textarea></label>
+                <label>Process<div class="format-tools" aria-label="Process formatting"><button class="text-button" type="button" data-format-for="process" data-format="bold"><strong>B</strong> bold</button><button class="text-button" type="button" data-format-for="process" data-format="italic"><em>I</em> italic</button></div><textarea name="process" rows="4" placeholder="How did you develop the work?"></textarea></label>
+                <label>Outcome<textarea name="outcome" rows="3" placeholder="What was made, learned, or achieved?"></textarea></label>
+              </div>
               <div class="form-grid"><label>Credits<input name="credits" placeholder="Creative direction, photo..." /></label><label>External link<input name="link" placeholder="https://..." /></label></div>
               <label>More information<div class="format-tools" aria-label="More information formatting"><button class="text-button" type="button" data-format-for="notes" data-format="bold"><strong>B</strong> bold</button><button class="text-button" type="button" data-format-for="notes" data-format="italic"><em>I</em> italic</button></div><textarea name="notes" rows="4" placeholder="What did you notice, make, or learn?"></textarea></label>
               <div class="form-actions"><button class="button dark" type="submit"><i data-lucide="check"></i> Save project</button><button class="text-button preview-project" type="button">Preview on site</button><button class="text-button delete-project" type="button">Delete project</button></div>
@@ -53,6 +60,11 @@
             <div class="editor-heading"><div><p class="eyebrow">YOUR FILES</p><h3>Media library</h3></div><button class="text-button refresh-media" type="button">refresh library</button></div>
             <p class="small-copy">Files are automatically sorted into folders. Deleting a file here permanently removes it from every project that uses it.</p>
             <div id="media-library" class="media-library" aria-live="polite"></div>
+          </div>
+          <div id="history-tab" class="tab-panel" role="tabpanel" aria-labelledby="history-tab-button" hidden>
+            <div class="editor-heading"><div><p class="eyebrow">SAFETY NET</p><h3>History &amp; drafts</h3></div></div>
+            <p class="small-copy">The editor keeps unsaved project drafts in this browser and creates an automatic backup after every successful save.</p>
+            <div id="history-list" class="history-list" aria-live="polite"></div>
           </div>
           <div id="appearance-tab" class="tab-panel" role="tabpanel" aria-labelledby="appearance-tab-button" hidden>
             <div class="editor-heading"><div><p class="eyebrow">MAKE IT YOURS</p><h3>Look &amp; feel</h3></div></div>
@@ -85,9 +97,9 @@
         </section>
       </div>
     </dialog>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-    <script src="../supabase-config.js?v=20260820-1"></script>
-    <script src="../app.js?v=20260821-4"></script>
+    <script src="/assets/vendor/lucide-1.33.0.min.js"></script>
+    <script src="/assets/vendor/supabase-2.112.3.js"></script>
+    <script src="/supabase-config.js?v=20260820-1"></script>
+    <script src="/app.js?v=20260827-2"></script>
   </body>
 </html>
