@@ -1,8 +1,14 @@
 /* The public site and editor share one hosted archive, with a small local backup. */
 const STORAGE_KEY = "tiona-portfolio";
 const LEGACY_STORAGE_KEY = "moss-archive";
+const HISTORY_KEY = "tiona-portfolio-history";
+const DRAFT_KEY = "tiona-project-drafts";
 const CONTENT_TABLE = "portfolio_content";
+const HISTORY_TABLE = "portfolio_history";
 const MEDIA_BUCKET = "portfolio-media";
+const SITE_ORIGIN = "https://tiona.studio";
+const SECTION_PATHS = { "fine-art": "fine-art", writing: "writing", projects: "design" };
+const PATH_SECTIONS = { "fine-art": "fine-art", writing: "writing", design: "projects", projects: "projects" };
 const isAdmin = location.pathname.replace(/\/+$/, "") === "/applepie";
 const app = document.querySelector("#app");
 const modal = document.querySelector("#editor-modal");
@@ -18,6 +24,9 @@ let pendingMediaFiles = [];
 let mediaLibrary = [];
 let mediaLibraryLoaded = false;
 let mediaLibraryMessage = "";
+let siteManifest = { projects: {}, media: {}, defaultSocialImage: "/assets/social/tiona-zeng-portfolio.jpg" };
+let draftTimer = null;
+let lastHistorySignature = "";
 const recoveryHash = new URLSearchParams(location.hash.slice(1));
 const recoveryQuery = new URLSearchParams(location.search);
 let isRecoveringPassword = recoveryHash.get("type") === "recovery" || recoveryQuery.has("code");
@@ -61,7 +70,14 @@ function normalizeArchive(candidate) {
   const source = candidate && typeof candidate === "object" ? candidate : {};
   const archive = { ...cloneDefaults(), ...source, links: { ...defaults.links, ...(source.links || {}) } };
   archive.annotations = Array.isArray(source.annotations) ? source.annotations : defaults.annotations;
-  archive.projects = Array.isArray(source.projects) ? source.projects : [];
+  archive.projects = Array.isArray(source.projects) ? source.projects.map(project => ({
+    role: "",
+    challenge: "",
+    process: "",
+    outcome: "",
+    ...project,
+    slug: project.slug || slugify(project.title || "untitled project")
+  })) : [];
   return archive;
 }
 
@@ -88,6 +104,68 @@ function externalUrl(value = "") {
   return `https://${url.replace(/^\/+/, "")}`;
 }
 
+function slugify(value = "") {
+  return String(value)
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "untitled-project";
+}
+
+function listingRoute(category) {
+  return `/${SECTION_PATHS[category] || SECTION_PATHS["fine-art"]}/`;
+}
+
+function projectRoute(project) {
+  if (!project) return "/";
+  return siteManifest.projects?.[project.id]?.route
+    || `${listingRoute(project.category)}${project.slug || slugify(project.title)}/`;
+}
+
+function uniqueProjectSlug(title, category, excludeId = "") {
+  const base = slugify(title);
+  const used = new Set(data.projects
+    .filter(project => project.category === category && project.id !== excludeId)
+    .map(project => project.slug || slugify(project.title)));
+  let candidate = base;
+  let number = 2;
+  while (used.has(candidate)) candidate = `${base}-${number++}`;
+  return candidate;
+}
+
+async function loadSiteManifest() {
+  try {
+    const response = await fetch("/data/site-index.json", { cache: "no-cache" });
+    if (response.ok) siteManifest = { ...siteManifest, ...(await response.json()) };
+  } catch {
+    // The live archive still works if optimized build metadata is unavailable.
+  }
+}
+
+function mediaRecord(source = "", inline = {}) {
+  return { ...(siteManifest.media?.[source] || {}), ...(inline || {}) };
+}
+
+function responsiveImage(source, alt, options = {}) {
+  const record = mediaRecord(source, options.media);
+  const sizes = options.sizes || "100vw";
+  const sourceTags = ["avif", "webp"].map(format => {
+    const variants = record.variants?.[format];
+    if (!Array.isArray(variants) || !variants.length) return "";
+    const srcset = variants.map(item => `${escapeHtml(item.src)} ${Number(item.width)}w`).join(", ");
+    return `<source type="image/${format}" srcset="${srcset}" sizes="${escapeHtml(sizes)}" />`;
+  }).join("");
+  const dimensions = record.width && record.height
+    ? ` width="${Number(record.width)}" height="${Number(record.height)}"`
+    : "";
+  const loading = options.loading || "lazy";
+  const priority = options.fetchpriority ? ` fetchpriority="${options.fetchpriority}"` : "";
+  const interactive = options.interactive
+    ? ` role="button" tabindex="0" aria-label="${escapeHtml(options.ariaLabel || `Open ${alt} full screen`)}"`
+    : "";
+  return `<picture class="responsive-picture">${sourceTags}<img src="${escapeHtml(source)}" alt="${escapeHtml(alt)}"${dimensions} sizes="${escapeHtml(sizes)}" loading="${loading}" decoding="async"${priority}${interactive} /></picture>`;
+}
+
 function isVideoSource(source = "") {
   return /^data:video\//i.test(source) || /\.mp4(?:[?#].*)?$/i.test(source);
 }
@@ -102,7 +180,11 @@ function projectImages(project) {
     : (Array.isArray(project?.images) ? project.images : []);
   return items.map(item => {
     const media = typeof item === "string" ? { src: item, caption: "" } : item;
-    return { ...media, type: media.type || (isPdfSource(media.src) ? "pdf" : isVideoSource(media.src) ? "video" : "image") };
+    return {
+      ...mediaRecord(media.src, media),
+      ...media,
+      type: media.type || (isPdfSource(media.src) ? "pdf" : isVideoSource(media.src) ? "video" : "image")
+    };
   }).filter(media => media?.src);
 }
 
@@ -126,7 +208,7 @@ function mediaName(source = "") {
   catch { return name.replace(/^\d+-[\da-f-]+-/, ""); }
 }
 
-function storedMedia(projects = data.projects) {
+function storedMedia(projects = Array.isArray(data.projects) ? data.projects : []) {
   const known = new Map();
   projects.forEach(project => {
     const sources = [project.image, ...projectImages(project).map(item => item.src)].filter(Boolean);
@@ -143,6 +225,47 @@ function richText(value = "") {
     .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
     .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>")
     .replace(/\n/g, "<br />");
+}
+
+function setSaveStatus(state, message) {
+  const status = document.querySelector("#save-status");
+  if (!status) return;
+  status.className = `save-status is-${state}`;
+  status.textContent = message;
+}
+
+function localHistory() {
+  try {
+    const historyEntries = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    return Array.isArray(historyEntries) ? historyEntries : [];
+  } catch {
+    return [];
+  }
+}
+
+function historySnapshot() {
+  const snapshot = structuredClone(data);
+  // Keep automatic history compact; the current custom font is preserved when restoring.
+  delete snapshot.font;
+  return snapshot;
+}
+
+async function recordHistory(label = "portfolio saved") {
+  const snapshot = historySnapshot();
+  const signature = JSON.stringify(snapshot);
+  if (signature === lastHistorySignature) return;
+  lastHistorySignature = signature;
+  const entry = { id: crypto.randomUUID(), label, createdAt: new Date().toISOString(), content: snapshot };
+  const entries = [entry, ...localHistory()].slice(0, 25);
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(entries)); }
+  catch { localStorage.setItem(HISTORY_KEY, JSON.stringify(entries.slice(0, 8))); }
+  renderHistory();
+  if (sb && currentUser) {
+    // Remote history is an extra safety net. Older installations without the table still save normally.
+    sb.from(HISTORY_TABLE).insert({ owner: currentUser.id, label, content: snapshot }).then(({ error }) => {
+      if (error && !/does not exist|schema cache/i.test(error.message || "")) console.warn("History backup failed:", error.message);
+    });
+  }
 }
 
 function saveLocalArchive() {
@@ -172,18 +295,27 @@ async function hydrateArchive() {
   saveLocalArchive();
 }
 
-async function saveArchive() {
-  saveLocalArchive();
-  if (!sb) return;
-  if (!currentUser) throw new Error("Sign in to save changes and upload media.");
-  const { error } = await sb.from(CONTENT_TABLE).upsert({
-    id: "site",
-    content: data,
-    owner: archiveOwner || currentUser.id,
-    updated_at: new Date().toISOString()
-  }, { onConflict: "id" });
-  if (error) throw error;
-  archiveOwner = archiveOwner || currentUser.id;
+async function saveArchive(label = "portfolio saved") {
+  setSaveStatus("saving", "saving…");
+  try {
+    saveLocalArchive();
+    if (sb) {
+      if (!currentUser) throw new Error("Sign in to save changes and upload media.");
+      const { error } = await sb.from(CONTENT_TABLE).upsert({
+        id: "site",
+        content: data,
+        owner: archiveOwner || currentUser.id,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "id" });
+      if (error) throw error;
+      archiveOwner = archiveOwner || currentUser.id;
+    }
+    await recordHistory(label);
+    setSaveStatus("saved", `saved ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`);
+  } catch (error) {
+    setSaveStatus("error", "save failed — your local draft is still here");
+    throw error;
+  }
 }
 
 function applyTheme() {
@@ -194,10 +326,10 @@ function applyTheme() {
     customFont ||= Object.assign(document.createElement("style"), { id: "custom-font" });
     customFont.textContent = `@font-face{font-family:StudioCustom;src:url(${data.font})}`;
     if (!customFont.isConnected) document.head.append(customFont);
-    document.documentElement.style.setProperty("--display", 'StudioCustom, "Sneaky Times", serif');
+    document.documentElement.style.setProperty("--display", 'StudioCustom, "Sneaky Times Web", "Sneaky Times", serif');
   } else {
     customFont?.remove();
-    document.documentElement.style.setProperty("--display", '"Sneaky Times", "Times New Roman", serif');
+    document.documentElement.style.setProperty("--display", '"Sneaky Times Web", "Sneaky Times", "Times New Roman", serif');
   }
   const wordmark = document.querySelector(".wordmark");
   if (wordmark) wordmark.innerHTML = `${escapeHtml(data.studioName).replace(" ", "<br />")}<span>✶</span>`;
@@ -209,10 +341,11 @@ function createIcons() { window.lucide?.createIcons(); }
 function emptyShelf() { return '<p class="empty">This shelf is ready for your work.</p>'; }
 
 function card(project) {
+  const coverMedia = projectImages(project).find(item => item.src === project.image);
   const cover = project.image
-    ? `<img src="${escapeHtml(project.image)}" alt="${escapeHtml(project.title)}" loading="lazy" decoding="async" />`
+    ? responsiveImage(project.image, project.title, { media: coverMedia, sizes: "(max-width: 720px) calc(100vw - 40px), 50vw" })
     : `<span class="card-placeholder" style="background:${escapeHtml(project.color || "#f2d591")}"></span>`;
-  return `<a class="work-card" href="#${project.category}/${project.id}"><div class="card-image">${cover}</div><div class="card-caption"><div class="card-meta"><span>${escapeHtml(project.medium || labels[project.category])}</span><span>${escapeHtml(project.year)}</span></div><h3 class="card-title">${escapeHtml(project.title)}</h3></div></a>`;
+  return `<a class="work-card" data-route href="${projectRoute(project)}"><div class="card-image">${cover}</div><div class="card-caption"><div class="card-meta"><span>${escapeHtml(project.medium || labels[project.category])}</span><span>${escapeHtml(project.year)}</span></div><h3 class="card-title">${escapeHtml(project.title)}</h3></div></a>`;
 }
 
 function aboutText() {
@@ -232,11 +365,11 @@ function socialLinks() {
 }
 
 function homeSection(label, title, href, linkText, content, className = "") {
-  return `<section class="home-sections ${className}"><div class="section-heading"><div><p>${label}</p><h2><a href="${href}">${title}</a></h2></div><a class="text-link" href="${href}">${linkText}</a></div><div class="feature-grid">${content}</div></section>`;
+  return `<section class="home-sections ${className}"><div class="section-heading"><div><p>${label}</p><h2><a data-route href="${href}">${title}</a></h2></div><a class="text-link" data-route href="${href}">${linkText}</a></div><div class="feature-grid">${content}</div></section>`;
 }
 
 function writingHomeSection(content) {
-  return `<section class="home-sections writing-home"><div class="section-heading"><div><p>02 / shower & regular thoughts alike</p><h2><a href="#writing">writing</a></h2></div><a class="text-link" href="#writing">browse more</a></div><div class="writing-list">${content}</div></section>`;
+  return `<section class="home-sections writing-home"><div class="section-heading"><div><p>02 / shower & regular thoughts alike</p><h2><a data-route href="/writing/">writing</a></h2></div><a class="text-link" data-route href="/writing/">browse more</a></div><div class="writing-list">${content}</div></section>`;
 }
 
 function marqueeContent() {
@@ -250,11 +383,11 @@ function home() {
   const writing = data.projects.filter(project => project.category === "writing").slice(0, 3);
   const design = data.projects.filter(project => project.category === "projects").slice(0, 3);
   const writingRows = writing.length ? writing.map(writingRow).join("") : emptyShelf();
-  return `<section class="hero"><div><h1><em>welcome.</em></h1><p class="intro">Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)</p></div><div class="hero-art"><img src="assets/graphics/portfolio-graphic.svg?v=20260820-12" alt="" /></div><div class="hero-bottom"><span>scroll to explore my mind</span><span>student / artist / writer / designer <i data-lucide="arrow-down"></i></span></div></section>${homeSection("01 / pieces that challenge me in ever different ways", "fine art", "#fine-art", "browse more", art.map(card).join("") || emptyShelf())}${writingHomeSection(writingRows)}${homeSection("03 / projects with clients", "design", "#projects", "browse more", design.map(card).join("") || emptyShelf(), "design-preview")}<section class="about"><h2><em>nice to meet you</em></h2><div class="about-copy"><p>${aboutText()}</p>${socialLinks()}</div></section>`;
+  return `<section class="hero"><div><h1><em>welcome.</em></h1><p class="intro">Thanks for stopping by and I hope you enjoy looking through some of my works. Please let me know if you have any comments, questions, and concerns. Feedback is always appreciated :)</p></div><div class="hero-art"><img src="/assets/graphics/portfolio-graphic.svg?v=20260820-12" alt="" /></div><div class="hero-bottom"><span>scroll to explore my mind</span><span>student / artist / writer / designer <i data-lucide="arrow-down"></i></span></div></section>${homeSection("01 / pieces that challenge me in ever different ways", "fine art", "/fine-art/", "browse more", art.map(card).join("") || emptyShelf())}${writingHomeSection(writingRows)}${homeSection("03 / projects with clients", "design", "/design/", "browse more", design.map(card).join("") || emptyShelf(), "design-preview")}<section class="about"><h2><em>nice to meet you</em></h2><div class="about-copy"><p>${aboutText()}</p>${socialLinks()}</div></section>`;
 }
 
 function writingRow(project) {
-  return `<a class="writing-row" href="#writing/${project.id}"><span class="type">${escapeHtml(project.medium || "writing")}</span><h3>${escapeHtml(project.title)}</h3><span class="writing-year">${escapeHtml(project.year || "")}</span><i data-lucide="arrow-up-right"></i></a>`;
+  return `<a class="writing-row" data-route href="${projectRoute(project)}"><span class="type">${escapeHtml(project.medium || "writing")}</span><h3>${escapeHtml(project.title)}</h3><span class="writing-year">${escapeHtml(project.year || "")}</span><i data-lucide="arrow-up-right"></i></a>`;
 }
 
 function listing(category) {
@@ -269,13 +402,20 @@ function listing(category) {
 function detail(category, id) {
   const project = data.projects.find(item => item.id === id);
   if (!project) return listing(category);
+  const coverMedia = projectImages(project).find(item => item.src === project.image);
   const cover = project.image
-    ? `<figure class="detail-image detail-image--cover"><img src="${escapeHtml(project.image)}" alt="${escapeHtml(project.title)}" decoding="async" role="button" tabindex="0" aria-label="Open ${escapeHtml(project.title)} full screen" /></figure>`
+    ? `<figure class="detail-image detail-image--cover">${responsiveImage(project.image, project.title, { media: coverMedia, sizes: "(max-width: 720px) calc(100vw - 32px), 880px", loading: "eager", fetchpriority: "high", interactive: true })}</figure>`
     : `<div class="detail-gallery-anchor" aria-hidden="true"></div>`;
   const meta = [project.year, project.medium].filter(Boolean).map(value => `<span>${escapeHtml(value)}</span>`).join("");
-  const credits = project.credits ? `<h3>credits</h3><p>${escapeHtml(project.credits)}</p>` : "";
-  const notes = project.notes ? `<h3>more information</h3><p>${richText(project.notes)}</p>` : "";
-  return `<article class="detail"><a class="back" href="#${category}"><i data-lucide="arrow-left"></i> back to ${labels[category]}</a><div class="detail-head"><h1>${escapeHtml(project.title)}</h1><div class="detail-meta">${meta}${project.description ? `<p class="detail-description">${escapeHtml(project.description)}</p>` : ""}</div></div>${cover}<div class="detail-copy"><div>${credits}${notes}${project.link ? `<a class="external-text-link" href="${escapeHtml(externalUrl(project.link))}" target="_blank" rel="noreferrer">visit external link <i class="external-link-icon" data-lucide="arrow-up-right" aria-hidden="true"></i></a>` : ""}</div></div></article>`;
+  const caseStudy = [
+    ["role", project.role],
+    ["challenge", project.challenge],
+    ["process", project.process],
+    ["outcome", project.outcome],
+    ["credits", project.credits],
+    ["more information", project.notes]
+  ].filter(([, value]) => String(value || "").trim()).map(([heading, value]) => `<section class="case-study-section"><h3>${heading}</h3><p>${richText(value)}</p></section>`).join("");
+  return `<article class="detail"><a class="back" data-route href="${listingRoute(category)}"><i data-lucide="arrow-left"></i> back to ${labels[category]}</a><div class="detail-head"><h1>${escapeHtml(project.title)}</h1><div class="detail-meta">${meta}${project.description ? `<p class="detail-description">${escapeHtml(project.description)}</p>` : ""}</div></div>${cover}<div class="detail-copy"><div>${caseStudy}${project.link ? `<a class="external-text-link" href="${escapeHtml(externalUrl(project.link))}" target="_blank" rel="noreferrer">visit external link <i class="external-link-icon" data-lucide="arrow-up-right" aria-hidden="true"></i></a>` : ""}</div></div></article>`;
 }
 
 function renderGallery(project) {
@@ -287,7 +427,7 @@ function renderGallery(project) {
   if (!images.length) return;
   const gallery = document.createElement("section");
   gallery.className = `detail-gallery${images.some(image => image.type === "pdf") ? " has-pdf" : ""}`;
-  const galleryItems = images.map(image => `<figure class="${image.type === "pdf" ? "pdf-figure" : ""}">${image.type === "video" ? `<video controls preload="metadata" src="${escapeHtml(image.src)}"></video>` : image.type === "pdf" ? `<iframe class="pdf-embed" src="${escapeHtml(image.src)}#view=FitH" title="${escapeHtml(project.title)} PDF" loading="lazy"></iframe><a class="pdf-fallback" href="${escapeHtml(image.src)}" target="_blank" rel="noreferrer">open PDF in a new tab <i class="external-link-icon" data-lucide="arrow-up-right" aria-hidden="true"></i></a>` : `<img src="${escapeHtml(image.src)}" alt="Additional image from ${escapeHtml(project.title)}" loading="lazy" decoding="async" role="button" tabindex="0" aria-label="Open project image full screen" />`}${image.caption ? `<figcaption>${richText(image.caption)}</figcaption>` : ""}</figure>`).join("");
+  const galleryItems = images.map(image => `<figure class="${image.type === "pdf" ? "pdf-figure" : ""}">${image.type === "video" ? `<video controls preload="metadata" src="${escapeHtml(image.src)}"></video>` : image.type === "pdf" ? `<iframe class="pdf-embed" src="${escapeHtml(image.src)}#view=FitH" title="${escapeHtml(project.title)} PDF" loading="lazy"></iframe><a class="pdf-fallback" href="${escapeHtml(image.src)}" target="_blank" rel="noreferrer">open PDF in a new tab <i class="external-link-icon" data-lucide="arrow-up-right" aria-hidden="true"></i></a>` : responsiveImage(image.src, `Additional image from ${project.title}`, { media: image, sizes: "(max-width: 720px) calc(100vw - 32px), 880px", interactive: true, ariaLabel: "Open project image full screen" })}${image.caption ? `<figcaption>${richText(image.caption)}</figcaption>` : ""}</figure>`).join("");
   gallery.innerHTML = `<div class="detail-gallery-track">${galleryItems}</div>`;
   app.querySelector(".detail-image, .detail-gallery-anchor")?.after(gallery);
 }
@@ -369,7 +509,7 @@ function renderReading(books) {
 
 function loadReading() {
   renderReading(fallbackReading);
-  fetch("data/current-reading.json", { cache: "no-store" }).then(response => response.ok ? response.json() : Promise.reject()).then(payload => { if (Array.isArray(payload.books) && payload.books.length) renderReading(payload.books); }).catch(() => {});
+  fetch("/data/current-reading.json", { cache: "no-store" }).then(response => response.ok ? response.json() : Promise.reject()).then(payload => { if (Array.isArray(payload.books) && payload.books.length) renderReading(payload.books); }).catch(() => {});
 }
 
 function updatePageMetadata(page, project) {
@@ -387,28 +527,80 @@ function updatePageMetadata(page, project) {
     ['meta[property="og:title"]', title],
     ['meta[property="og:description"]', description],
     ['meta[name="twitter:title"]', title],
-    ['meta[name="twitter:description"]', description]
+    ['meta[name="twitter:description"]', description],
+    ['meta[property="og:url"]', `${SITE_ORIGIN}${location.pathname}`],
+    ['meta[property="og:type"]', project ? "article" : "website"],
+    ['meta[property="og:image"]', `${SITE_ORIGIN}${siteManifest.projects?.[project?.id]?.socialImage || siteManifest.defaultSocialImage}`],
+    ['meta[property="og:image:alt"]', project ? `Preview of ${project.title} by Tiona Zeng` : "Tiona Zeng portfolio"],
+    ['meta[name="twitter:image"]', `${SITE_ORIGIN}${siteManifest.projects?.[project?.id]?.socialImage || siteManifest.defaultSocialImage}`]
   ];
   metadata.forEach(([selector, content]) => document.querySelector(selector)?.setAttribute("content", content));
+  document.querySelector('link[rel="canonical"]')?.setAttribute("href", `${SITE_ORIGIN}${location.pathname}`);
   document.querySelectorAll(".site-header .nav-link").forEach(link => {
-    const active = link.getAttribute("href") === `#${page}`;
+    const active = page === "home"
+      ? link.dataset.page === "home"
+      : link.getAttribute("href") === listingRoute(page);
     if (active) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   });
 }
 
+function migrateLegacyHash() {
+  const legacy = location.hash.slice(1);
+  if (!legacy || legacy.startsWith("type=")) return;
+  const [category, id] = legacy.split("/");
+  if (!["home", "fine-art", "writing", "projects"].includes(category)) return;
+  const project = id ? data.projects.find(item => item.id === id) : null;
+  const route = project ? projectRoute(project) : category === "home" ? "/" : listingRoute(category);
+  history.replaceState({}, "", route);
+}
+
+function currentRoute() {
+  const segments = location.pathname.split("/").filter(Boolean);
+  if (!segments.length) return { page: "home", project: null };
+  const page = PATH_SECTIONS[segments[0]];
+  if (!page) return { page: "home", project: null, missing: true };
+  if (!segments[1]) return { page, project: null };
+  const project = data.projects.find(item => {
+    const manifestSlug = siteManifest.projects?.[item.id]?.slug;
+    return item.id === segments[1] || manifestSlug === segments[1] || item.slug === segments[1];
+  });
+  return { page, project: project || null, missing: !project };
+}
+
+function navigateTo(route, replace = false) {
+  if (replace) history.replaceState({}, "", route);
+  else history.pushState({}, "", route);
+  renderPublic();
+}
+
 function renderPublic() {
-  const [category = "home", id] = location.hash.slice(1).split("/");
-  const page = ["home", "fine-art", "writing", "projects"].includes(category) ? category : "home";
-  const project = id && data.projects.find(item => item.id === id);
+  migrateLegacyHash();
+  const { page, project, missing } = currentRoute();
   document.querySelector(".image-viewer")?.closeViewer?.();
   app.classList.remove("page-enter"); void app.offsetWidth;
-  app.innerHTML = `${id ? detail(page, id) : page === "home" ? home() : listing(page)}<div class="marquee marquee-bottom"><div class="marquee-track">${marqueeContent()}</div></div>`;
+  const content = missing
+    ? `<section class="page not-found"><div class="page-head"><h1>Page<br />not found</h1><p>This page may have moved. <a data-route href="/">Return to the portfolio</a>.</p></div></section>`
+    : project ? detail(page, project.id) : page === "home" ? home() : listing(page);
+  app.innerHTML = `${content}<div class="marquee marquee-bottom"><div class="marquee-track">${marqueeContent()}</div></div>`;
   if (project) renderGallery(project);
   if (page === "home") loadReading();
   updatePageMetadata(page, project);
   app.classList.add("page-enter");
-  createIcons(); scrollTo(0, 0);
+  createIcons(); scrollTo({ top: 0, behavior: "auto" });
+  window.portfolioTelemetry?.pageview(location.pathname);
+}
+
+function setupPublicRouting() {
+  document.addEventListener("click", event => {
+    const link = event.target.closest("a[data-route]");
+    if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const url = new URL(link.href, location.href);
+    if (url.origin !== location.origin) return;
+    event.preventDefault();
+    navigateTo(`${url.pathname}${url.search}`);
+  });
+  window.addEventListener("popstate", renderPublic);
 }
 
 function populateEditor() {
@@ -502,7 +694,10 @@ function renderMediaLibrary() {
   ];
   library.innerHTML = `${mediaLibraryMessage ? `<p class="media-library-message">${escapeHtml(mediaLibraryMessage)}</p>` : ""}${folders.map(([title, type]) => {
     const folderItems = items.filter(item => item.type === type);
-    return `<section class="media-folder"><div class="media-folder-heading"><h4>${title}</h4><span>${folderItems.length}</span></div>${folderItems.length ? `<div class="media-grid">${folderItems.map(item => `<article class="media-item"><div class="media-thumb">${mediaPreview(item)}</div><p title="${escapeHtml(mediaName(item.src))}">${escapeHtml(mediaName(item.src))}</p><small>${item.projects.length ? `used in ${escapeHtml(item.projects.join(", "))}` : "not used in a project"}</small><button class="text-button media-delete" type="button" data-delete-media="${escapeHtml(item.src)}">delete file</button></article>`).join("")}</div>` : `<p class="empty">No ${title.toLowerCase()} uploaded yet.</p>`}</section>`;
+    return `<section class="media-folder"><div class="media-folder-heading"><h4>${title}</h4><span>${folderItems.length}</span></div>${folderItems.length ? `<div class="media-grid">${folderItems.map(item => {
+      const projects = Array.isArray(item.projects) ? item.projects : [];
+      return `<article class="media-item"><div class="media-thumb">${mediaPreview(item)}</div><p title="${escapeHtml(mediaName(item.src))}">${escapeHtml(mediaName(item.src))}</p><small>${projects.length ? `used in ${escapeHtml(projects.join(", "))}` : "not used in a project"}</small><button class="text-button media-delete" type="button" data-delete-media="${escapeHtml(item.src)}">delete file</button></article>`;
+    }).join("")}</div>` : `<p class="empty">No ${title.toLowerCase()} uploaded yet.</p>`}</section>`;
   }).join("")}`;
   createIcons();
 }
@@ -566,12 +761,104 @@ function renderGalleryOrder(project) {
   createIcons();
 }
 
+function projectDrafts() {
+  try {
+    const drafts = JSON.parse(localStorage.getItem(DRAFT_KEY) || "{}");
+    return drafts && typeof drafts === "object" ? drafts : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveProjectDraft() {
+  const form = document.querySelector("#project-form");
+  if (!form || form.classList.contains("hidden")) return;
+  const values = Object.fromEntries(new FormData(form));
+  delete values.galleryFiles;
+  const key = editingId || "new-project";
+  const drafts = projectDrafts();
+  drafts[key] = { values, updatedAt: new Date().toISOString() };
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts));
+  setSaveStatus("draft", "draft saved in this browser");
+  renderHistory();
+}
+
+function scheduleProjectDraft() {
+  setSaveStatus("draft", "saving draft…");
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(saveProjectDraft, 450);
+}
+
+function clearProjectDraft(key = editingId || "new-project") {
+  clearTimeout(draftTimer);
+  draftTimer = null;
+  const drafts = projectDrafts();
+  delete drafts[key];
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts));
+  renderHistory();
+}
+
+function renderHistory() {
+  const panel = document.querySelector("#history-list");
+  if (!panel) return;
+  const histories = localHistory();
+  const drafts = Object.entries(projectDrafts());
+  const draftMarkup = drafts.length
+    ? `<section class="history-group"><h4>unsaved drafts</h4>${drafts.map(([key, draft]) => `<article class="history-item"><div><strong>${escapeHtml(draft.values?.title || "new project")}</strong><span>${new Date(draft.updatedAt).toLocaleString()}</span></div><button class="text-button" type="button" data-restore-draft="${escapeHtml(key)}">continue editing</button></article>`).join("")}</section>`
+    : "";
+  const historyMarkup = histories.length
+    ? `<section class="history-group"><h4>automatic backups</h4>${histories.map(entry => `<article class="history-item"><div><strong>${escapeHtml(entry.label)}</strong><span>${new Date(entry.createdAt).toLocaleString()}</span></div><button class="text-button" type="button" data-restore-history="${escapeHtml(entry.id)}">restore</button></article>`).join("")}</section>`
+    : `<p class="empty">Your first automatic backup will appear after you save.</p>`;
+  panel.innerHTML = `${draftMarkup}${historyMarkup}`;
+}
+
+async function loadRemoteHistory() {
+  if (!sb || !currentUser) return;
+  const { data: remote, error } = await sb
+    .from(HISTORY_TABLE)
+    .select("id, label, content, created_at")
+    .eq("owner", currentUser.id)
+    .order("created_at", { ascending: false })
+    .limit(25);
+  if (error || !Array.isArray(remote)) return;
+  const combined = new Map(localHistory().map(entry => [`${entry.createdAt}-${entry.label}`, entry]));
+  remote.forEach(entry => {
+    const normalized = { id: `remote-${entry.id}`, label: entry.label, content: entry.content, createdAt: entry.created_at };
+    combined.set(`${normalized.createdAt}-${normalized.label}`, normalized);
+  });
+  const entries = [...combined.values()].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 25);
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(entries)); } catch { /* Local history remains optional. */ }
+  renderHistory();
+}
+
+async function restoreHistoryEntry(id) {
+  const entry = localHistory().find(item => item.id === id);
+  if (!entry || !confirm(`Restore the backup from ${new Date(entry.createdAt).toLocaleString()}? Your current version will be backed up first.`)) return;
+  await recordHistory("before restoring a backup");
+  const currentFont = data.font;
+  data = normalizeArchive({ ...entry.content, ...(currentFont ? { font: currentFont } : {}) });
+  await saveArchive("backup restored");
+  populateEditor(); renderProjectList(); renderMediaLibrary(); renderHistory();
+}
+
+function restoreDraft(key) {
+  const draft = projectDrafts()[key];
+  if (!draft) return;
+  openProjectForm(key === "new-project" ? "" : key);
+  const form = document.querySelector("#project-form");
+  Object.entries(draft.values || {}).forEach(([name, value]) => {
+    if (form.elements[name] && typeof value === "string") form.elements[name].value = value;
+  });
+  activateEditorTab(document.querySelector('[data-tab="content"]'));
+  showFormNotice(form, "draft restored — review it, then save when you’re ready.", "success");
+}
+
 function setupEditor() {
   if (!modal) return;
   modal.showModal(); modal.append(cursor);
   modal.addEventListener("cancel", event => event.preventDefault());
   activateEditorTab(document.querySelector(".editor-tab.active"));
-  populateEditor(); renderProjectList(); refreshMediaLibrary();
+  populateEditor(); renderProjectList(); renderHistory(); loadRemoteHistory(); refreshMediaLibrary();
   document.addEventListener("click", handleEditorClick);
   document.querySelector(".editor-tabs")?.addEventListener("keydown", event => {
     if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
@@ -586,6 +873,7 @@ function setupEditor() {
     activateEditorTab(tabs[next]);
   });
   document.querySelector("#project-form").addEventListener("submit", saveProject);
+  document.querySelector("#project-form").addEventListener("input", scheduleProjectDraft);
   document.querySelector("#studio-name").addEventListener("input", event => { data.studioName = event.target.value || defaults.studioName; saveLocalArchive(); });
   document.querySelector("#accent-color").addEventListener("input", event => { data.accent = event.target.value; saveLocalArchive(); });
   document.querySelector("#font-upload").addEventListener("change", uploadFont);
@@ -724,8 +1012,12 @@ async function handleEditorClick(event) {
   if (target.closest(".preview-project")) {
     const project = data.projects.find(item => item.id === editingId);
     if (!project) showFormNotice(document.querySelector("#project-form"), "Save the project once before previewing it.");
-    else window.open(`../#${project.category}/${project.id}`, "_blank", "noopener");
+    else window.open(projectRoute(project), "_blank", "noopener");
   }
+  const restoreHistory = target.closest("[data-restore-history]");
+  if (restoreHistory) await restoreHistoryEntry(restoreHistory.dataset.restoreHistory);
+  const restoreDraftButton = target.closest("[data-restore-draft]");
+  if (restoreDraftButton) restoreDraft(restoreDraftButton.dataset.restoreDraft);
   const formatter = target.closest("[data-format]");
   if (formatter) formatText(formatter.dataset.formatFor, formatter.dataset.format);
   const moveGallery = target.closest("[data-move-gallery]");
@@ -736,12 +1028,21 @@ async function handleEditorClick(event) {
     const from = Number(moveGallery.dataset.moveGallery);
     const to = from + Number(moveGallery.dataset.direction);
     if (items[to]) {
+      clearTimeout(draftTimer);
+      draftTimer = null;
       [items[from], items[to]] = [items[to], items[from]];
       project.gallery = items;
       project.images = items.map(item => item.src);
       project.image = items.find(item => item.type === "image")?.src || "";
-      try { await saveArchive(); openProjectForm(editingId); }
-      catch (error) { showFormNotice(document.querySelector("#project-form"), error.message || "Unable to reorder the gallery."); }
+      try {
+        await saveArchive();
+        clearProjectDraft(editingId);
+        openProjectForm(editingId);
+      } catch (error) {
+        saveProjectDraft();
+        setSaveStatus("error", "save failed — your local draft is still here");
+        showFormNotice(document.querySelector("#project-form"), error.message || "Unable to reorder the gallery.");
+      }
     }
   }
   const removeGallery = target.closest("[data-remove-gallery]");
@@ -750,11 +1051,21 @@ async function handleEditorClick(event) {
     syncGalleryCaptions(project);
     const item = projectImages(project)[Number(removeGallery.dataset.removeGallery)];
     if (item && confirm(`Remove ${mediaName(item.src)} from this project? The file will remain in your media library.`)) {
+      clearTimeout(draftTimer);
+      draftTimer = null;
       project.gallery = projectImages(project).filter((_, index) => index !== Number(removeGallery.dataset.removeGallery));
       project.images = project.gallery.map(image => image.src);
       if (project.image === item.src) project.image = project.gallery.find(image => image.type === "image")?.src || "";
-      try { await saveArchive(); openProjectForm(editingId); renderMediaLibrary(); }
-      catch (error) { showFormNotice(document.querySelector("#project-form"), error.message || "Unable to remove this file."); }
+      try {
+        await saveArchive();
+        clearProjectDraft(editingId);
+        openProjectForm(editingId);
+        renderMediaLibrary();
+      } catch (error) {
+        saveProjectDraft();
+        setSaveStatus("error", "save failed — your local draft is still here");
+        showFormNotice(document.querySelector("#project-form"), error.message || "Unable to remove this file.");
+      }
     }
   }
   const deleteMedia = target.closest("[data-delete-media]");
@@ -842,6 +1153,7 @@ function formatText(fieldName, format) {
   const cursor = selected ? end + marker.length * 2 : start + marker.length;
   field.focus();
   field.setSelectionRange(cursor, cursor);
+  scheduleProjectDraft();
 }
 
 function showFormNotice(form, message, type = "error") {
@@ -867,7 +1179,16 @@ async function uploadMedia(file) {
   });
   if (error) throw error;
   const { data: publicUrl } = sb.storage.from(MEDIA_BUCKET).getPublicUrl(path);
-  return publicUrl.publicUrl;
+  const result = { src: publicUrl.publicUrl, type: mediaKind(file.name), name: file.name };
+  if (file.type.startsWith("image/")) {
+    try {
+      const bitmap = await createImageBitmap(file);
+      result.width = bitmap.width;
+      result.height = bitmap.height;
+      bitmap.close();
+    } catch { /* Dimensions will be filled by the next site build. */ }
+  }
+  return result;
 }
 
 async function saveProject(event) {
@@ -875,13 +1196,17 @@ async function saveProject(event) {
   const form = event.currentTarget;
   const submit = form.querySelector('[type="submit"]');
   if (submit?.disabled) return;
+  clearTimeout(draftTimer);
+  draftTimer = null;
   submit?.setAttribute("aria-busy", "true");
   if (submit) submit.disabled = true;
+  const draftKey = editingId || "new-project";
+  const archiveBeforeSave = structuredClone(data);
+  const uploads = [];
   try {
     const files = [...pendingMediaFiles];
     const values = Object.fromEntries(new FormData(form));
     const existing = data.projects.find(project => project.id === values.id);
-    const uploads = [];
     if (files.length) {
       for (const [index, file] of files.entries()) {
         showFormNotice(form, `Uploading ${index + 1} of ${files.length}: ${file.name}`, "success");
@@ -890,24 +1215,45 @@ async function saveProject(event) {
     } else {
       showFormNotice(form, "Saving project…", "success");
     }
-    const urls = values.galleryUrls.split(/\n|,/).map(url => url.trim()).filter(Boolean);
+    const urls = values.galleryUrls.split(/\n|,/).map(url => url.trim()).filter(Boolean).map(src => ({ src, type: mediaKind(src) }));
     const previous = existing ? projectImages(existing) : [];
-    const sources = [...new Set([...previous.map(image => image.src), ...urls, ...uploads])];
+    const bySource = new Map([...previous, ...urls, ...uploads].map(item => [item.src, item]));
+    const mediaItems = [...bySource.values()];
     const captions = [...form.querySelectorAll("[data-gallery-caption]")].reduce((all, field) => ({ ...all, [Number(field.dataset.galleryCaption)]: field.value }), {});
     delete values.galleryFiles; delete values.galleryUrls;
     Object.keys(values).filter(key => key.startsWith("galleryCaption")).forEach(key => delete values[key]);
-    const slug = values.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "project";
+    const slug = existing?.slug || uniqueProjectSlug(values.title, values.category, existing?.id);
     values.id = values.id || `${slug}-${crypto.randomUUID().slice(0, 8)}`;
-    values.gallery = sources.map((src, index) => ({ src, type: mediaKind(src), caption: captions[index] ?? previous.find(image => image.src === src)?.caption ?? "" }));
-    values.images = sources;
-    values.image = values.image || sources.find(source => !isVideoSource(source) && !isPdfSource(source)) || existing?.image || "";
+    values.slug = slug;
+    values.gallery = mediaItems.map((item, index) => ({ ...item, caption: captions[index] ?? previous.find(image => image.src === item.src)?.caption ?? item.caption ?? "" }));
+    values.images = mediaItems.map(item => item.src);
+    values.image = values.image || mediaItems.find(item => item.type === "image")?.src || existing?.image || "";
     values.color = existing?.color || ["#f2d591", "#d6ddec", "#d9c6e8", "#c3d8bd"][data.projects.length % 4];
     const index = data.projects.findIndex(project => project.id === values.id);
     if (index >= 0) data.projects[index] = values; else data.projects.unshift(values);
-    await saveArchive(); editingId = values.id; clearAttachedMedia(); renderProjectList(); await refreshMediaLibrary(true);
+    await saveArchive(existing ? `updated “${values.title}”` : `added “${values.title}”`);
+    clearProjectDraft(draftKey); editingId = values.id; clearAttachedMedia(); renderProjectList(); await refreshMediaLibrary(true);
     openProjectForm(values.id);
     showFormNotice(document.querySelector("#project-form"), existing ? "project updated — preview it on the site or keep editing." : "project saved — preview it on the site or keep editing.", "success");
   } catch (error) {
+    data = archiveBeforeSave;
+    saveLocalArchive();
+    if (uploads.length) {
+      const urlField = form.elements.galleryUrls;
+      const currentUrls = urlField.value.split(/\n|,/).map(url => url.trim()).filter(Boolean);
+      urlField.value = [...new Set([...currentUrls, ...uploads.map(item => item.src)])].join("\n");
+      const completedFiles = new Set([...pendingMediaFiles].slice(0, uploads.length));
+      pendingMediaFiles = pendingMediaFiles.filter(file => !completedFiles.has(file));
+      const display = document.querySelector("#gallery-file-names");
+      if (display) {
+        const names = pendingMediaFiles.map(file => file.name);
+        display.textContent = names.length
+          ? `${names.length} file${names.length === 1 ? "" : "s"} attached: ${names.join(", ")}`
+          : "Uploads finished; their saved URLs are ready below. Try saving again.";
+      }
+      saveProjectDraft();
+      setSaveStatus("error", "save failed — your local draft is still here");
+    }
     const message = error.message || "That file could not be uploaded. Try again or use a public media URL.";
     showFormNotice(form, message);
   } finally {
@@ -988,8 +1334,11 @@ function setupAnnotations() {
 }
 
 async function startApp() {
-  try { await hydrateArchive(); }
-  catch (error) { console.warn("Unable to load the hosted archive:", error); }
+  await loadSiteManifest();
+  if (!isAdmin) {
+    try { await hydrateArchive(); }
+    catch (error) { console.warn("Unable to load the hosted archive:", error); }
+  }
   applyTheme(); setupCursor(); setupHaptics();
   if (isAdmin) {
     if (!sb) { renderEditorGate("The hosted editor connection is missing."); return; }
@@ -998,12 +1347,17 @@ async function startApp() {
     const { data: auth } = await sb.auth.getUser();
     currentUser = auth.user;
     if (!currentUser) { renderEditorGate(recoveryLinkError || undefined); return; }
+    try {
+      await hydrateArchive();
+      applyTheme();
+    } catch (error) {
+      console.warn("Unable to load the hosted archive:", error);
+    }
     if (archiveOwner && archiveOwner !== currentUser.id) { renderEditorGate("This editor belongs to a different account."); return; }
     setupEditor();
     return;
   }
-  window.addEventListener("hashchange", renderPublic);
-  setupAnnotations(); renderPublic();
+  setupPublicRouting(); setupAnnotations(); renderPublic();
 }
 
 if (isAdmin && sb) {

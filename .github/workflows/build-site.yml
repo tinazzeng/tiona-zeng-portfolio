@@ -1,0 +1,48 @@
+name: Build routes and media
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - "app.js"
+      - "index.html"
+      - "styles.css"
+      - "scripts/build_site.py"
+      - "scripts/subset_font.py"
+      - "requirements-build.txt"
+      - "assets/fonts/**"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: portfolio-static-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-build.txt
+      - name: Install pinned build tools
+        run: python -m pip install -r requirements-build.txt
+      - name: Generate font, routes, media, and previews
+        run: |
+          python scripts/subset_font.py
+          python scripts/build_site.py
+      - name: Commit generated files
+        run: |
+          git config user.name "tiona.studio builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add 404.html sitemap.xml data/site-index.json assets/media assets/social assets/fonts/sneaky-times-latin.woff2 fine-art writing design projects
+          git diff --cached --quiet && exit 0
+          git commit -m "Refresh portfolio routes and responsive media"
+          git push
