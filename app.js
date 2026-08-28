@@ -1280,66 +1280,53 @@ function setupCursor() {
   let nextFrame = null;
   let pointerX = -100;
   let pointerY = -100;
-  let previousX = null;
-  let previousY = null;
-  let previousDX = 0;
-  let previousDY = 0;
-  let previousMoveTime = 0;
-  let shakeScore = 0;
+  const motionSamples = [];
   let settleTimer = null;
+
   const settleCursor = () => {
-    shakeScore = 0;
+    motionSamples.length = 0;
     cursor.classList.remove("is-locating");
   };
+
   const trackPointerSearch = event => {
-    if (event.pointerType && event.pointerType !== "mouse") return;
-    const now = event.timeStamp || performance.now();
-    if (previousX === null || now - previousMoveTime > 160) {
-      previousX = event.clientX;
-      previousY = event.clientY;
-      previousMoveTime = now;
-      previousDX = 0;
-      previousDY = 0;
-      shakeScore = 0;
-      return;
+    const now = performance.now();
+    motionSamples.push({ x: event.clientX, y: event.clientY, time: now });
+    while (motionSamples.length > 1 && now - motionSamples[0].time > 600) motionSamples.shift();
+    if (motionSamples.length < 4) return;
+
+    let pathDistance = 0;
+    for (let index = 1; index < motionSamples.length; index += 1) {
+      const current = motionSamples[index];
+      const previous = motionSamples[index - 1];
+      pathDistance += Math.hypot(current.x - previous.x, current.y - previous.y);
     }
-    const dx = event.clientX - previousX;
-    const dy = event.clientY - previousY;
-    const distance = Math.hypot(dx, dy);
-    const previousDistance = Math.hypot(previousDX, previousDY);
-    const elapsed = Math.max(1, now - previousMoveTime);
-    shakeScore *= Math.exp(-elapsed / 180);
-    if (distance > 4 && elapsed < 90) {
-      const directionChange = previousDistance
-        ? (dx * previousDX + dy * previousDY) / (distance * previousDistance)
-        : 1;
-      shakeScore += directionChange < -.15
-        ? Math.min(100, 34 + distance * 1.35)
-        : Math.min(12, distance * .08);
-    }
-    previousX = event.clientX;
-    previousY = event.clientY;
-    previousDX = dx;
-    previousDY = dy;
-    previousMoveTime = now;
-    if (shakeScore < 115) return;
+    const first = motionSamples[0];
+    const last = motionSamples[motionSamples.length - 1];
+    const netDistance = Math.hypot(last.x - first.x, last.y - first.y);
+    const triggerDistance = Math.min(480, Math.max(260, window.innerWidth * .24));
+    const doubledBack = pathDistance > netDistance * 1.65;
+    if (pathDistance < triggerDistance || !doubledBack) return;
+
     cursor.classList.add("is-locating");
     clearTimeout(settleTimer);
-    settleTimer = setTimeout(settleCursor, 700);
+    settleTimer = setTimeout(settleCursor, 850);
   };
+
   const drawCursor = () => {
     nextFrame = null;
-    cursor.style.transform = `translate3d(${pointerX - 5}px, ${pointerY - 5}px, 0)`;
+    cursor.style.transform = `translate3d(${pointerX}px, ${pointerY}px, 0) translate(-50%, -50%)`;
   };
-  window.addEventListener("pointermove", event => {
+
+  document.addEventListener("mousemove", event => {
     pointerX = event.clientX;
     pointerY = event.clientY;
     cursor.classList.add("is-visible");
     trackPointerSearch(event);
     if (!nextFrame) nextFrame = requestAnimationFrame(drawCursor);
   }, { passive: true });
-  window.addEventListener("pointerleave", () => { cursor.classList.remove("is-visible"); settleCursor(); });
-  window.addEventListener("pointerenter", () => cursor.classList.add("is-visible"));
+
+  document.documentElement.addEventListener("mouseleave", () => { cursor.classList.remove("is-visible"); settleCursor(); });
+  document.documentElement.addEventListener("mouseenter", () => cursor.classList.add("is-visible"));
   window.addEventListener("blur", () => { cursor.classList.remove("is-visible"); settleCursor(); });
   document.addEventListener("pointerover", event => cursor.classList.toggle("is-hovering", Boolean(event.target.closest("a, button, input, select, textarea, label"))));
 }
