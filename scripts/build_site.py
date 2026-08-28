@@ -35,6 +35,7 @@ ACCENT = "#f2d591"
 SECTION_PATHS = {"fine-art": "fine-art", "writing": "writing", "projects": "design"}
 SECTION_TITLES = {"fine-art": "fine art", "writing": "writing", "projects": "design"}
 IMAGE_WIDTHS = (480, 880, 1440, 1760)
+MEDIA_PIPELINE_VERSION = b"responsive-alpha-v1"
 
 
 def request_bytes(url: str, headers: dict[str, str] | None = None) -> bytes:
@@ -117,7 +118,9 @@ def download_images(projects: list[dict[str, Any]]) -> tuple[dict[str, dict[str,
                 raw = request_bytes(src)
                 image, has_alpha = normalize_image(Image.open(io.BytesIO(raw)))
                 width, height = image.size
-                digest = hashlib.sha256(src.encode("utf-8")).hexdigest()[:14]
+                # Include the source bytes and pipeline version so rebuilt media
+                # never reuses a stale browser/CDN URL after processing changes.
+                digest = hashlib.sha256(MEDIA_PIPELINE_VERSION + b"\0" + raw).hexdigest()[:14]
                 variants: dict[str, list[dict[str, Any]]] = {"avif": [], "webp": []}
                 widths = sorted(set(min(width, candidate) for candidate in IMAGE_WIDTHS if candidate <= width) | {width})
                 widths = [candidate for candidate in widths if candidate <= max(IMAGE_WIDTHS)] or [width]
