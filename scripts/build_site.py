@@ -94,6 +94,17 @@ def reset_generated_output() -> None:
     (ROOT / "assets/social").mkdir(parents=True, exist_ok=True)
 
 
+def normalize_image(image: Image.Image) -> tuple[Image.Image, bool]:
+    """Apply orientation while retaining meaningful source transparency."""
+    image = ImageOps.exif_transpose(image)
+    may_have_alpha = "A" in image.getbands() or "transparency" in image.info
+    if may_have_alpha:
+        rgba = image.convert("RGBA")
+        has_alpha = rgba.getchannel("A").getextrema()[0] < 255
+        return (rgba if has_alpha else rgba.convert("RGB")), has_alpha
+    return image.convert("RGB"), False
+
+
 def download_images(projects: list[dict[str, Any]]) -> tuple[dict[str, dict[str, Any]], dict[str, Image.Image]]:
     records: dict[str, dict[str, Any]] = {}
     originals: dict[str, Image.Image] = {}
@@ -104,7 +115,7 @@ def download_images(projects: list[dict[str, Any]]) -> tuple[dict[str, dict[str,
                 continue
             try:
                 raw = request_bytes(src)
-                image = ImageOps.exif_transpose(Image.open(io.BytesIO(raw))).convert("RGB")
+                image, has_alpha = normalize_image(Image.open(io.BytesIO(raw)))
                 width, height = image.size
                 digest = hashlib.sha256(src.encode("utf-8")).hexdigest()[:14]
                 variants: dict[str, list[dict[str, Any]]] = {"avif": [], "webp": []}
@@ -121,7 +132,7 @@ def download_images(projects: list[dict[str, Any]]) -> tuple[dict[str, dict[str,
                         output = ROOT / "assets/media" / filename
                         resized.save(output, format=extension.upper(), **options)
                         variants[extension].append({"src": f"/assets/media/{filename}", "width": variant_width})
-                records[src] = {"width": width, "height": height, "variants": variants}
+                records[src] = {"width": width, "height": height, "hasAlpha": has_alpha, "variants": variants}
                 originals[src] = image
                 print(f"optimized {src.rsplit('/', 1)[-1]} ({width}×{height})")
             except Exception as error:  # Keep the original remote URL as a safe fallback.
@@ -167,7 +178,10 @@ def social_card(project: dict[str, Any] | None, cover: Image.Image | None, filen
     draw = ImageDraw.Draw(canvas)
     if cover:
         fitted = ImageOps.fit(cover, (610, 630), method=Image.Resampling.LANCZOS, centering=(0.5, 0.45))
-        canvas.paste(fitted, (0, 0))
+        if "A" in fitted.getbands():
+            canvas.paste(fitted, (0, 0), fitted.getchannel("A"))
+        else:
+            canvas.paste(fitted, (0, 0))
         draw.rectangle((590, 0, 610, 630), fill=ACCENT)
     else:
         draw.ellipse((-110, 85, 520, 715), fill=ACCENT)
