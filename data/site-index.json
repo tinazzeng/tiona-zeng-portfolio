@@ -47,6 +47,7 @@
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787279755434-f8e2ad6b-7986-4358-8a58-abc75acf5d70-translation-guide.png": {
       "width": 2940,
       "height": 1600,
+      "hasAlpha": false,
       "variants": {
         "avif": [
           {
@@ -89,6 +90,7 @@
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787272948089-d0633ddf-0b9a-4b98-90e1-db28923672ab-cover-image.png": {
       "width": 1365,
       "height": 2048,
+      "hasAlpha": false,
       "variants": {
         "avif": [
           {
@@ -123,6 +125,7 @@
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787272942599-22f605c7-f762-4eb5-8a67-b11b7e0ef100-1.png": {
       "width": 1080,
       "height": 1440,
+      "hasAlpha": false,
       "variants": {
         "avif": [
           {
@@ -157,6 +160,7 @@
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787272944036-6d6c029e-76a5-4529-b657-97bbcc030310-2.png": {
       "width": 1080,
       "height": 1440,
+      "hasAlpha": false,
       "variants": {
         "avif": [
           {
@@ -191,6 +195,7 @@
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787272945560-761afdcd-c4e8-4a5f-869d-45ff1170924c-4.png": {
       "width": 1080,
       "height": 1440,
+      "hasAlpha": false,
       "variants": {
         "avif": [
           {
@@ -225,6 +230,7 @@
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787272946339-8a8bd59d-2494-4028-825f-8f2604c07e7c-5.png": {
       "width": 1080,
       "height": 1440,
+      "hasAlpha": false,
       "variants": {
         "avif": [
           {
@@ -259,6 +265,7 @@
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787272947179-7f5754c0-3e73-47fb-a9cf-1fbd0f3fddfa-6.png": {
       "width": 1080,
       "height": 1440,
+      "hasAlpha": false,
       "variants": {
         "avif": [
           {
@@ -293,6 +300,7 @@
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787276091962-66f5b7af-3a1b-404d-b3e3-63eb57c9196a-drawing.jpg": {
       "width": 3990,
       "height": 5320,
+      "hasAlpha": false,
       "variants": {
         "avif": [
           {
@@ -335,6 +343,7 @@
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787267893726-def32681-c14d-46e1-8137-d3144e8a2d6a-palette.png": {
       "width": 1080,
       "height": 1080,
+      "hasAlpha": false,
       "variants": {
         "avif": [
           {
@@ -369,6 +378,7 @@
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787267894208-d8682aef-55bb-4db7-a8c3-dcbffa9c217f-fonts.png": {
       "width": 1080,
       "height": 1080,
+      "hasAlpha": false,
       "variants": {
         "avif": [
           {
@@ -403,6 +413,7 @@
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787267894396-9708684b-c095-4f2b-9ee3-1e72e9f50835-mockup.png": {
       "width": 1920,
       "height": 1180,
+      "hasAlpha": false,
       "variants": {
         "avif": [
           {
@@ -445,6 +456,7 @@
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787267895161-fd5114f8-2d41-4dd9-8e9c-d9f3ce704734-planet-heart.png": {
       "width": 1640,
       "height": 2360,
+      "hasAlpha": true,
       "variants": {
         "avif": [
           {
@@ -487,6 +499,7 @@
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787267895451-990e953c-5046-48e0-9a1c-30c857a09244-planet.png": {
       "width": 1640,
       "height": 2360,
+      "hasAlpha": true,
       "variants": {
         "avif": [
           {
@@ -529,6 +542,7 @@
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787267895824-46637c88-282e-4a76-9e3d-033f6c80498a-planet-point.png": {
       "width": 1640,
       "height": 2360,
+      "hasAlpha": true,
       "variants": {
         "avif": [
           {
@@ -571,6 +585,7 @@
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787267896101-46d0a1bb-47b0-43d5-abf5-c244e53ae308-planet-lounge.png": {
       "width": 1640,
       "height": 2360,
+      "hasAlpha": true,
       "variants": {
         "avif": [
           {
@@ -613,6 +628,7 @@
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787267079075-19f78ec9-9beb-45d7-9f7d-0f89cd213ed6-poster.png": {
       "width": 6250,
       "height": 4830,
+      "hasAlpha": false,
       "variants": {
         "avif": [
           {
@@ -655,6 +671,7 @@
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787267081384-a8b2f6ed-4c9f-4273-afdc-de6c9d1d77a0-supplements.png": {
       "width": 6250,
       "height": 4830,
+      "hasAlpha": false,
       "variants": {
         "avif": [
           {
@@ -697,6 +714,7 @@
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787267082801-3aced2dc-dbe4-42bd-ace0-fa28f089c69e-product.png": {
       "width": 2150,
       "height": 3590,
+      "hasAlpha": true,
       "variants": {
         "avif": [
           {
@@ -738,5 +756,5 @@
     }
   },
   "defaultSocialImage": "/assets/social/tiona-zeng-portfolio.jpg",
-  "generatedAt": "2026-08-28T16:11:52.579387+00:00"
+  "generatedAt": "2026-08-28T21:24:21.852649+00:00"
 }
