@@ -1181,13 +1181,20 @@ button:active,
 }
 
 .cursor-orb {
+  --cursor-locate-scale: 1;
   opacity: 0;
-  transition: opacity .12s ease, background .18s ease;
+  scale: var(--cursor-locate-scale);
+  transform-origin: center;
+  transition: opacity .12s ease, background .18s ease, scale .24s cubic-bezier(.2,.8,.2,1);
   will-change: transform;
 }
 
 .cursor-orb.is-visible {
   opacity: 1;
+}
+
+.cursor-orb.is-locating {
+  --cursor-locate-scale: 3.2;
 }
 
 /* Writing is deliberately set like a reading list, not a card grid. */

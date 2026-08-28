@@ -1280,6 +1280,53 @@ function setupCursor() {
   let nextFrame = null;
   let pointerX = -100;
   let pointerY = -100;
+  let previousX = null;
+  let previousY = null;
+  let previousDX = 0;
+  let previousDY = 0;
+  let previousMoveTime = 0;
+  let shakeScore = 0;
+  let settleTimer = null;
+  const settleCursor = () => {
+    shakeScore = 0;
+    cursor.classList.remove("is-locating");
+  };
+  const trackPointerSearch = event => {
+    if (event.pointerType && event.pointerType !== "mouse") return;
+    const now = event.timeStamp || performance.now();
+    if (previousX === null || now - previousMoveTime > 160) {
+      previousX = event.clientX;
+      previousY = event.clientY;
+      previousMoveTime = now;
+      previousDX = 0;
+      previousDY = 0;
+      shakeScore = 0;
+      return;
+    }
+    const dx = event.clientX - previousX;
+    const dy = event.clientY - previousY;
+    const distance = Math.hypot(dx, dy);
+    const previousDistance = Math.hypot(previousDX, previousDY);
+    const elapsed = Math.max(1, now - previousMoveTime);
+    shakeScore *= Math.exp(-elapsed / 180);
+    if (distance > 4 && elapsed < 90) {
+      const directionChange = previousDistance
+        ? (dx * previousDX + dy * previousDY) / (distance * previousDistance)
+        : 1;
+      shakeScore += directionChange < -.15
+        ? Math.min(100, 34 + distance * 1.35)
+        : Math.min(12, distance * .08);
+    }
+    previousX = event.clientX;
+    previousY = event.clientY;
+    previousDX = dx;
+    previousDY = dy;
+    previousMoveTime = now;
+    if (shakeScore < 115) return;
+    cursor.classList.add("is-locating");
+    clearTimeout(settleTimer);
+    settleTimer = setTimeout(settleCursor, 700);
+  };
   const drawCursor = () => {
     nextFrame = null;
     cursor.style.transform = `translate3d(${pointerX - 5}px, ${pointerY - 5}px, 0)`;
@@ -1288,11 +1335,12 @@ function setupCursor() {
     pointerX = event.clientX;
     pointerY = event.clientY;
     cursor.classList.add("is-visible");
+    trackPointerSearch(event);
     if (!nextFrame) nextFrame = requestAnimationFrame(drawCursor);
   }, { passive: true });
-  window.addEventListener("pointerleave", () => cursor.classList.remove("is-visible"));
+  window.addEventListener("pointerleave", () => { cursor.classList.remove("is-visible"); settleCursor(); });
   window.addEventListener("pointerenter", () => cursor.classList.add("is-visible"));
-  window.addEventListener("blur", () => cursor.classList.remove("is-visible"));
+  window.addEventListener("blur", () => { cursor.classList.remove("is-visible"); settleCursor(); });
   document.addEventListener("pointerover", event => cursor.classList.toggle("is-hovering", Boolean(event.target.closest("a, button, input, select, textarea, label"))));
 }
 
