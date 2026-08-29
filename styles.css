@@ -430,6 +430,55 @@ button {
   border: 0;
 }
 
+html.is-loading,
+html.is-loading body {
+  overflow: hidden;
+}
+
+.site-loader {
+  align-items: center;
+  background: var(--paper);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  opacity: 1;
+  position: fixed;
+  transition: opacity .4s ease, visibility 0s linear .4s;
+  visibility: visible;
+  z-index: 10000;
+}
+
+.site-loader.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.site-loader[hidden] {
+  display: none;
+}
+
+.site-loader-mark {
+  align-items: center;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex;
+  height: 76px;
+  justify-content: center;
+  width: 76px;
+}
+
+.site-loader svg {
+  animation: site-loader-spin 2s linear infinite;
+  color: var(--ink);
+  height: 34px;
+  width: 34px;
+}
+
+@keyframes site-loader-spin {
+  to { transform: rotate(360deg); }
+}
+
 .currently-reading {
   z-index: 1;
   grid-column: 2;

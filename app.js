@@ -13,6 +13,8 @@ const isAdmin = location.pathname.replace(/\/+$/, "") === "/applepie";
 const app = document.querySelector("#app");
 const modal = document.querySelector("#editor-modal");
 const cursor = document.querySelector(".cursor-orb");
+const siteLoader = document.querySelector("#site-loader");
+const siteLoaderStartedAt = performance.now();
 const supabaseConfig = window.SUPABASE_CONFIG || {};
 const sb = window.supabase && supabaseConfig.url && supabaseConfig.publishableKey
   ? window.supabase.createClient(supabaseConfig.url, supabaseConfig.publishableKey)
@@ -338,6 +340,20 @@ function applyTheme() {
 }
 
 function createIcons() { window.lucide?.createIcons(); }
+function finishSiteLoad() {
+  if (!siteLoader) {
+    document.documentElement.classList.remove("is-loading");
+    return;
+  }
+  const minimumDisplay = 420;
+  const delay = Math.max(0, minimumDisplay - (performance.now() - siteLoaderStartedAt));
+  setTimeout(() => requestAnimationFrame(() => {
+    document.documentElement.classList.remove("is-loading");
+    siteLoader.classList.add("is-hidden");
+    siteLoader.setAttribute("aria-hidden", "true");
+    setTimeout(() => { siteLoader.hidden = true; }, 420);
+  }), delay);
+}
 function emptyShelf() { return '<p class="empty">This shelf is ready for your work.</p>'; }
 
 function card(project) {
@@ -1404,4 +1420,9 @@ if (isAdmin && sb) {
   });
 }
 
-startApp();
+startApp().catch(error => {
+  console.error("The site could not finish loading:", error);
+  if (!app.childElementCount) {
+    app.innerHTML = '<section class="page not-found"><div class="page-head"><h1>Something went wrong</h1><p>Please refresh the page and try again.</p></div></section>';
+  }
+}).finally(finishSiteLoad);
