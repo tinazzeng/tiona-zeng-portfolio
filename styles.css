@@ -469,7 +469,7 @@ html.is-loading body {
 }
 
 .site-loader svg {
-  animation: site-loader-spin 2s linear infinite;
+  animation: site-loader-spin 180s linear infinite;
   color: var(--ink);
   height: 34px;
   width: 34px;
