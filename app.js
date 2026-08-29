@@ -1291,7 +1291,7 @@ function setupCursor() {
   const trackPointerSearch = event => {
     const now = performance.now();
     motionSamples.push({ x: event.clientX, y: event.clientY, time: now });
-    while (motionSamples.length > 1 && now - motionSamples[0].time > 600) motionSamples.shift();
+    while (motionSamples.length > 1 && now - motionSamples[0].time > 560) motionSamples.shift();
     if (motionSamples.length < 4) return;
 
     let pathDistance = 0;
@@ -1303,8 +1303,8 @@ function setupCursor() {
     const first = motionSamples[0];
     const last = motionSamples[motionSamples.length - 1];
     const netDistance = Math.hypot(last.x - first.x, last.y - first.y);
-    const triggerDistance = Math.min(480, Math.max(260, window.innerWidth * .24));
-    const doubledBack = pathDistance > netDistance * 1.65;
+    const triggerDistance = Math.min(520, Math.max(300, window.innerWidth * .28));
+    const doubledBack = pathDistance > netDistance * 1.8;
     if (pathDistance < triggerDistance || !doubledBack) return;
 
     cursor.classList.add("is-locating");
