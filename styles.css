@@ -460,8 +460,6 @@ html.is-loading body {
 
 .site-loader-mark {
   align-items: center;
-  background: var(--accent);
-  border-radius: 50%;
   display: flex;
   height: 76px;
   justify-content: center;
@@ -469,8 +467,8 @@ html.is-loading body {
 }
 
 .site-loader svg {
-  animation: site-loader-spin 180s linear infinite;
-  color: var(--ink);
+  animation: site-loader-spin 90s linear infinite;
+  color: var(--accent);
   height: 34px;
   width: 34px;
 }
