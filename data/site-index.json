@@ -227,6 +227,41 @@
         ]
       }
     },
+    "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787272946339-8a8bd59d-2494-4028-825f-8f2604c07e7c-5.png": {
+      "width": 1080,
+      "height": 1440,
+      "hasAlpha": false,
+      "variants": {
+        "avif": [
+          {
+            "src": "/assets/media/ab84c142e33fae-480.avif",
+            "width": 480
+          },
+          {
+            "src": "/assets/media/ab84c142e33fae-880.avif",
+            "width": 880
+          },
+          {
+            "src": "/assets/media/ab84c142e33fae-1080.avif",
+            "width": 1080
+          }
+        ],
+        "webp": [
+          {
+            "src": "/assets/media/ab84c142e33fae-480.webp",
+            "width": 480
+          },
+          {
+            "src": "/assets/media/ab84c142e33fae-880.webp",
+            "width": 880
+          },
+          {
+            "src": "/assets/media/ab84c142e33fae-1080.webp",
+            "width": 1080
+          }
+        ]
+      }
+    },
     "https://cglxyzcyfvbpsznntzar.supabase.co/storage/v1/object/public/portfolio-media/63ca7b79-cfee-4607-b571-7feb07e3aa64/1787272947179-7f5754c0-3e73-47fb-a9cf-1fbd0f3fddfa-6.png": {
       "width": 1080,
       "height": 1440,
@@ -721,5 +756,5 @@
     }
   },
   "defaultSocialImage": "/assets/social/tiona-zeng-portfolio.jpg",
-  "generatedAt": "2026-09-13T01:06:45.074347+00:00"
+  "generatedAt": "2026-09-13T06:17:42.101501+00:00"
 }
