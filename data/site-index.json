@@ -756,5 +756,7 @@
     }
   },
   "defaultSocialImage": "/assets/social/tiona-zeng-portfolio.jpg",
-  "generatedAt": "2026-09-15T07:51:22.012617+00:00"
+  "mediaPipelineVersion": "responsive-alpha-v1",
+  "contentHash": "8235260c2a702d60262df83aaaa86b5e74f9fa721a60519577f46146bd8fcf2a",
+  "generatedAt": "2026-09-15T12:12:35.811193+00:00"
 }
