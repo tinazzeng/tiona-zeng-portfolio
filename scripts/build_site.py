@@ -36,6 +36,7 @@ SECTION_PATHS = {"fine-art": "fine-art", "writing": "writing", "projects": "desi
 SECTION_TITLES = {"fine-art": "fine art", "writing": "writing", "projects": "design"}
 IMAGE_WIDTHS = (480, 880, 1440, 1760)
 MEDIA_PIPELINE_VERSION = b"responsive-alpha-v1"
+MEDIA_PIPELINE_ID = MEDIA_PIPELINE_VERSION.decode("ascii")
 
 
 def request_bytes(url: str, headers: dict[str, str] | None = None) -> bytes:
@@ -86,8 +87,20 @@ def is_image(item: dict[str, Any]) -> bool:
     return item.get("type") == "image" or not re.search(r"\.(?:mp4|pdf)(?:[?#].*)?$", src, re.I)
 
 
+def load_existing_manifest() -> dict[str, Any]:
+    path = ROOT / "data/site-index.json"
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        return manifest if isinstance(manifest, dict) else {}
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+
+
 def reset_generated_output() -> None:
-    for relative in ("fine-art", "writing", "design", "projects", "assets/media", "assets/social"):
+    # Responsive media is retained between builds and validated before reuse.
+    # Deleting it here caused every scheduled build to download every source
+    # image from Supabase again, even when the portfolio had not changed.
+    for relative in ("fine-art", "writing", "design", "projects", "assets/social"):
         target = ROOT / relative
         if target.exists():
             shutil.rmtree(target)
@@ -106,13 +119,77 @@ def normalize_image(image: Image.Image) -> tuple[Image.Image, bool]:
     return image.convert("RGB"), False
 
 
-def download_images(projects: list[dict[str, Any]]) -> tuple[dict[str, dict[str, Any]], dict[str, Image.Image]]:
+def generated_media_path(source: str) -> Path | None:
+    relative = str(source or "").lstrip("/")
+    if not relative.startswith("assets/media/"):
+        return None
+    media_root = (ROOT / "assets/media").resolve()
+    candidate = (ROOT / relative).resolve()
+    if candidate != media_root and media_root not in candidate.parents:
+        return None
+    return candidate
+
+
+def reusable_media_record(candidate: Any) -> dict[str, Any] | None:
+    if not isinstance(candidate, dict) or not candidate.get("width") or not candidate.get("height"):
+        return None
+    variants = candidate.get("variants")
+    if not isinstance(variants, dict):
+        return None
+    for image_format in ("avif", "webp"):
+        entries = variants.get(image_format)
+        if not isinstance(entries, list) or not entries:
+            return None
+        for entry in entries:
+            path = generated_media_path(entry.get("src", "") if isinstance(entry, dict) else "")
+            if not path or not path.is_file() or path.stat().st_size == 0:
+                return None
+    return candidate
+
+
+def cached_preview(record: dict[str, Any]) -> Image.Image | None:
+    for image_format in ("webp", "avif"):
+        entries = sorted(record.get("variants", {}).get(image_format, []), key=lambda item: item.get("width", 0), reverse=True)
+        for entry in entries:
+            path = generated_media_path(entry.get("src", ""))
+            if not path:
+                continue
+            try:
+                with Image.open(path) as stored:
+                    preview, _ = normalize_image(stored.copy())
+                    preview.load()
+                    return preview
+            except (OSError, ValueError):
+                continue
+    return None
+
+
+def reusable_media(manifest: dict[str, Any]) -> dict[str, Any]:
+    pipeline = manifest.get("mediaPipelineVersion")
+    if pipeline not in (None, MEDIA_PIPELINE_ID):
+        return {}
+    media = manifest.get("media")
+    return media if isinstance(media, dict) else {}
+
+
+def download_images(
+    projects: list[dict[str, Any]],
+    existing_media: dict[str, Any] | None = None,
+) -> tuple[dict[str, dict[str, Any]], dict[str, Image.Image]]:
     records: dict[str, dict[str, Any]] = {}
     originals: dict[str, Image.Image] = {}
+    cached_records = existing_media or {}
     for project in projects:
         for item in project_media(project):
             src = item.get("src", "")
             if not src or src in records or not is_image(item):
+                continue
+            cached = reusable_media_record(cached_records.get(src))
+            preview = cached_preview(cached) if cached else None
+            if cached and preview:
+                records[src] = cached
+                originals[src] = preview
+                print(f"reused {src.rsplit('/', 1)[-1]}")
                 continue
             try:
                 raw = request_bytes(src)
@@ -141,6 +218,26 @@ def download_images(projects: list[dict[str, Any]]) -> tuple[dict[str, dict[str,
             except Exception as error:  # Keep the original remote URL as a safe fallback.
                 print(f"warning: unable to optimize {src}: {error}")
     return records, originals
+
+
+def cleanup_generated_media(records: dict[str, dict[str, Any]]) -> None:
+    used: set[Path] = set()
+    for record in records.values():
+        for entries in record.get("variants", {}).values():
+            for entry in entries:
+                path = generated_media_path(entry.get("src", ""))
+                if path:
+                    used.add(path)
+    media_root = ROOT / "assets/media"
+    for path in media_root.iterdir():
+        if path.is_file() and path.suffix.lower() in {".avif", ".webp"} and path.resolve() not in used:
+            path.unlink()
+            print(f"removed unused {path.name}")
+
+
+def archive_digest(archive: dict[str, Any]) -> str:
+    serialized = json.dumps(archive, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
 def load_font(size: int) -> ImageFont.FreeTypeFont:
@@ -349,7 +446,8 @@ def build_routes(archive: dict[str, Any], media: dict[str, Any], originals: dict
 
 
 def build_sitemap(manifest: dict[str, Any]) -> None:
-    today = datetime.now(timezone.utc).date().isoformat()
+    generated_at = str(manifest.get("generatedAt", ""))
+    today = generated_at[:10] if re.fullmatch(r"\d{4}-\d{2}-\d{2}.*", generated_at) else datetime.now(timezone.utc).date().isoformat()
     urls = ["/", "/fine-art/", "/writing/", "/design/"]
     urls.extend(entry["route"] for entry in manifest["projects"].values())
     body = "\n".join(
@@ -360,11 +458,20 @@ def build_sitemap(manifest: dict[str, Any]) -> None:
 
 
 def main() -> None:
+    existing_manifest = load_existing_manifest()
     archive = fetch_archive()
     reset_generated_output()
-    media, originals = download_images(archive.get("projects", []))
+    media, originals = download_images(archive.get("projects", []), reusable_media(existing_manifest))
     manifest = build_routes(archive, media, originals)
-    manifest["generatedAt"] = datetime.now(timezone.utc).isoformat()
+    content_hash = archive_digest(archive)
+    manifest["mediaPipelineVersion"] = MEDIA_PIPELINE_ID
+    manifest["contentHash"] = content_hash
+    manifest["generatedAt"] = (
+        existing_manifest.get("generatedAt")
+        if existing_manifest.get("contentHash") == content_hash and existing_manifest.get("generatedAt")
+        else datetime.now(timezone.utc).isoformat()
+    )
+    cleanup_generated_media(media)
     (ROOT / "data").mkdir(exist_ok=True)
     (ROOT / "data/site-index.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     build_sitemap(manifest)
