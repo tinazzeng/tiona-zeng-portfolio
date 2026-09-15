@@ -162,10 +162,14 @@ function responsiveImage(source, alt, options = {}) {
     : "";
   const loading = options.loading || "lazy";
   const priority = options.fetchpriority ? ` fetchpriority="${options.fetchpriority}"` : "";
+  const localFallbacks = record.variants?.webp || record.variants?.avif || [];
+  const fallbackSource = localFallbacks.length
+    ? [...localFallbacks].sort((a, b) => Number(b.width) - Number(a.width))[0].src
+    : source;
   const interactive = options.interactive
     ? ` role="button" tabindex="0" aria-label="${escapeHtml(options.ariaLabel || `Open ${alt} full screen`)}"`
     : "";
-  return `<picture class="responsive-picture">${sourceTags}<img src="${escapeHtml(source)}" alt="${escapeHtml(alt)}"${dimensions} sizes="${escapeHtml(sizes)}" loading="${loading}" decoding="async"${priority}${interactive} /></picture>`;
+  return `<picture class="responsive-picture">${sourceTags}<img src="${escapeHtml(fallbackSource)}" alt="${escapeHtml(alt)}"${dimensions} sizes="${escapeHtml(sizes)}" loading="${loading}" decoding="async"${priority}${interactive} /></picture>`;
 }
 
 function isVideoSource(source = "") {
