@@ -1,5 +1,11 @@
 {
   "projects": {
+    "everything-that-persists-exhibit-ii-fd19e1bc": {
+      "slug": "everything-that-persists-exhibit-ii",
+      "route": "/writing/everything-that-persists-exhibit-ii/",
+      "socialImage": "/assets/social/writing-everything-that-persists-exhibit-ii.jpg",
+      "category": "writing"
+    },
     "translation-guide-206a883f": {
       "slug": "translation-guide",
       "route": "/design/translation-guide/",
@@ -757,6 +763,6 @@
   },
   "defaultSocialImage": "/assets/social/tiona-zeng-portfolio.jpg",
   "mediaPipelineVersion": "responsive-alpha-v1",
-  "contentHash": "8235260c2a702d60262df83aaaa86b5e74f9fa721a60519577f46146bd8fcf2a",
-  "generatedAt": "2026-09-15T12:12:35.811193+00:00"
+  "contentHash": "54eb83e2b9a0271a23ff53b929bfd6dc87599cfd0a812a0da9396613423be4af",
+  "generatedAt": "2026-10-31T00:51:58.464298+00:00"
 }
