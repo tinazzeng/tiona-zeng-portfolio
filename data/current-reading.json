@@ -1,7 +1,12 @@
 {
-  "updatedAt": "2026-11-25T08:34:18.564Z",
+  "updatedAt": "2026-11-25T21:41:47.891Z",
   "source": "https://www.goodreads.com/user/show/34056305-tz",
   "books": [
+    {
+      "title": "Operation Bounce House",
+      "author": "Matt Dinniman",
+      "url": "https://www.goodreads.com/book/show/233717212-operation-bounce-house"
+    },
     {
       "title": "Abundance",
       "author": "Ezra Klein",
